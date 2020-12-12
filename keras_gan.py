@@ -1,0 +1,177 @@
+""" GAN Class taken from https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit"""
+import tensorflow as tf
+import numpy as np
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.layers import Dense
+from random import randint, random
+
+from tensorflow.python.keras.utils.np_utils import to_categorical
+
+
+def discrim_loss_fn(y_true, y_pred):
+    pass
+
+def gen_loss_fn(y_true, y_pred):
+    pass
+
+# class Generator(keras.Model):
+#     def train_step(self, data):
+#         x, y = data
+#         with tf.GradientTape() as tape:
+#             loss = self.compiled_loss(y, x)
+#         trainable = self.trainable_weights
+#         gradients = tape.gradient(loss, trainable)
+#         self.optimizer.apply_gradients(zip(gradients, trainable))
+#         self.compiled_metrics.update_state(y, x)
+#         return {m.name: m.result() for m in self.metrics}
+
+class GAN(keras.Model):
+    def __init__(self, discriminator, generator, latent_dim):
+        super(GAN, self).__init__()
+        self.discriminator = discriminator
+        self.generator = generator
+        self.latent_dim = latent_dim
+
+    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn):
+        super(GAN, self).compile()
+        self.d_optimizer = d_optimizer
+        self._g_optimizer = g_optimizer
+        self.d_loss_fn = d_loss_fn
+        self.g_loss_fn = g_loss_fn
+
+    def train_step(self, real_images):
+        if isinstance(real_images, tuple):
+            real_images = real_images[0]
+        data_type = real_images.dtype
+        print(tf.shape(real_images)[0])
+        print(real_images.shape[0])
+        batch_size = tf.shape(real_images)[0]
+        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim))
+        print(random_latent_vectors)
+        generated = self.generator(random_latent_vectors)
+        print(generated)
+        combined = tf.concat([generated, real_images], axis=0)
+        fakes_labels = keras.utils.to_categorical(tf.ones((batch_size, 1)), 2)
+        fakes_labels, real_labels = np.array([[1, 0] for _ in range(batch_size)], dtype=data_type), np.array([[0, 1] for _ in range(batch_size)], dtype=data_type)
+        labels = tf.concat((fakes_labels, real_labels))
+        with tf.GradientTape() as tape:
+            d_loss = self.d_loss_fn(labels, self.discriminator(combined))
+        grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+        with tf.GradientTape() as tape:
+            predictions = self.discriminator(self.generator(random_latent_vectors))
+            g_loss = self.g_loss_fn(fakes_labels, predictions)
+        grads = tape.gradient(g_loss, self.generator.trainable_weights)
+        self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
+        return {'d_loss': d_loss, 'g_loss': g_loss}
+
+if __name__ == '__main__':
+    discriminator = keras.Sequential(
+    [
+        keras.Input(shape=(28, 28, 1)),
+        layers.Conv2D(64, (3, 3), strides=(2, 2), padding="same"),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(128, (3, 3), strides=(2, 2), padding="same"),
+        layers.LeakyReLU(alpha=0.2),
+        layers.GlobalMaxPooling2D(),
+        layers.Dense(1),
+    ],
+    name="discriminator",
+    )
+
+    # Create the generator
+    latent_dim = 128
+    generator = keras.Sequential(
+        [
+            keras.Input(shape=(latent_dim,)),
+            # We want to generate 128 coefficients to reshape into a 7x7x128 map
+            layers.Dense(7 * 7 * 128),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Reshape((7, 7, 128)),
+            layers.Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv2D(1, (7, 7), padding="same", activation="sigmoid"),
+        ],
+        name="generator",
+    )
+    batch_size = 64
+    (x_train, _), (x_test, _) = keras.datasets.mnist.load_data()
+    all_digits = np.concatenate([x_train, x_test])
+    all_digits = all_digits.astype("float32") / 255.0
+    all_digits = np.reshape(all_digits, (-1, 28, 28, 1))
+    dataset = tf.data.Dataset.from_tensor_slices(all_digits)
+    dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
+
+    gan = GAN(discriminator=discriminator, generator=generator, latent_dim=latent_dim)
+    gan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+        d_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+        g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True)
+    )
+
+    # To limit the execution time, we only train on 100 batches. You can train on
+    # the entire dataset. You will need about 20 epochs to get nice results.
+    gan.fit(dataset.take(100), epochs=1)
+
+    # create discriminator and generator
+    # discrim = keras.Sequential(
+    #     [
+    #         Dense(10, input_shape=(1,), activation='relu'),
+    #         Dense(100, activation='relu'),
+    #         Dense(100, activation='relu'),
+    #         Dense(2, activation='softmax')
+    #     ]
+    # )
+    # discrim.compile(optimizer='adam', loss=keras.losses.BinaryCrossentropy(from_logits=True))
+    # generator = keras.Sequential([
+    #     Dense(100, activation='relu', input_shape=(1,)),
+    #     Dense(100, activation='relu'),
+    #     Dense(100, activation='relu'),
+    #     Dense(40, activation='relu'),
+    #     Dense(1, activation='relu')
+    # ])
+    # generator.compile(optimizer='adam', loss='mean_squared_logarithmic_error')
+    # # generator attempts to produce even numbers, discriminator will tell if true or not
+    # data_type = 'float32'
+
+    # range_min, random_range, data_size = 0, 1000, 20
+    # even_min, even_range = range_min, int(random_range / 2)
+    # label_alias = {'fake': 0, 'real': 1}
+    # # gen_input = [randint(0, 360)] # for sine numbers
+    # gen_input = np.array([randint(range_min, random_range) for _ in range(data_size)], dtype=data_type)
+    # trained, passes, min_passes = False, 0, 3
+    # epoch, epochs = 0, 10
+    # batch_size = 64
+    # gan = GAN(discriminator=discrim, generator=generator, latent_dim=1)
+    # gan.compile(d_optimizer=keras.optimizers.Adam(), g_optimizer=keras.optimizers.Adam(),
+    # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True), d_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True))
+    # gan.fit(gen_input, epochs=1)
+
+    # # define training loop
+    # print("Entering loop")
+    # while passes < min_passes and epoch < epochs:
+    #     print('Current epoch: {}'.format(epoch+1))
+    #     trained = True
+    #     gen_input = np.array([randint(range_min, random_range) for _ in range(data_size)], dtype=data_type)
+    #     fakes = generator.predict(gen_input)
+    #     guesses = discrim.predict(fakes)
+    #     print(guesses)
+    #     for guess in guesses:
+    #         if guess[0] != 0.5: # probability rule
+    #             trained = False
+    #             break
+    #     passes += 1 if trained else 0
+
+    #     if passes < min_passes:
+    #         real = np.array([[2 * randint(even_min, even_range)] for _ in range(data_size)], dtype=data_type)
+    #         fakes_labels, real_labels = np.array([[1, 0] for _ in fakes], dtype=data_type), np.array([[0, 1] for _ in real], dtype=data_type)
+    #         discrim.fit(np.concatenate((fakes, real)), np.concatenate((fakes_labels, real_labels)))
+    #         print(discrim.predict(fakes))
+    #         generator.fit(discrim.predict(fakes), fakes_labels)
+    #         epoch += 1
+    #     else:
+    #         print('Discriminator reached equilibrium')
+
