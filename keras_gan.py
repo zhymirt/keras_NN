@@ -1,13 +1,13 @@
 """ GAN Class taken from https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit"""
-import tensorflow as tf
-import numpy as np
 import math
+from random import randint, random
 
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense
-from random import randint, random
-
 from tensorflow.python.keras.utils.np_utils import to_categorical
 from torch import sin
 
@@ -18,6 +18,14 @@ def discrim_wasserstein_loss_fn(y_true, y_pred):
 
 def gen_wasserstein_loss_fn(y_true, y_pred):
     return -tf.reduce_mean(y_pred, axis=-1)
+
+def generate_sine(start, end, points, amplitude=1, frequency=1):
+    time = np.linspace(0, 2, 100)
+    signal = amplitude*np.sin(2*np.pi*frequency*time)
+    return signal
+
+def plot_data(data):
+    plt.plot(np.linspace(0, 100, num=100), data)
 
 class DiscriminatorWassersteinLoss(keras.losses.Loss):
     def call(self, y_true, y_pred):
@@ -32,17 +40,6 @@ class GeneratorWassersteinLoss(keras.losses.Loss):
         # y_pred = tf.convert_to_tensor_v2(y_pred)
         # y_true = tf.cast(y_true, y_pred.dtype)
         return tf.reduce_mean(y_pred, axis=-1)
-
-# class Generator(keras.Model):
-#     def train_step(self, data):
-#         x, y = data
-#         with tf.GradientTape() as tape:
-#             loss = self.compiled_loss(y, x)
-#         trainable = self.trainable_weights
-#         gradients = tape.gradient(loss, trainable)
-#         self.optimizer.apply_gradients(zip(gradients, trainable))
-#         self.compiled_metrics.update_state(y, x)
-#         return {m.name: m.result() for m in self.metrics}
 
 class GAN(keras.Model):
     def __init__(self, discriminator, generator, latent_dim):
@@ -145,10 +142,11 @@ if __name__ == '__main__':
     # gan.fit(dataset.take(100), epochs=1)
 
     latent_dimension = 200
+    vector_size = 100
     # create discriminator and generator
     discrim = keras.Sequential(
         [
-            Dense(10, input_shape=(1,), activation='relu'),
+            Dense(10, input_shape=(vector_size,), activation='relu'),
             Dense(100, activation='relu'),
             Dense(1)
         ]
@@ -159,7 +157,7 @@ if __name__ == '__main__':
         Dense(100, activation='relu'),
         Dense(100, activation='relu'),
         Dense(40, activation='relu'),
-        Dense(1, activation='relu')
+        Dense(vector_size, activation='relu')
     ])
     # generator.compile(optimizer='adam', loss='mean_squared_logarithmic_error')
     # generator attempts to produce even numbers, discriminator will tell if true or not
@@ -171,46 +169,23 @@ if __name__ == '__main__':
     epoch, epochs = 0, 10
     batch_size = 64
     label_alias = {'fake': 0, 'real': 1}
-    benign_data = [[math.sin(val)] for val in range(data_size)] # for sine numbers
-    print('Benign data: {}'.format(benign_data))
+    starts = [randint(0, 100)/100 for _ in range(1000)] # generate n beginning data points
+    benign_data = [generate_sine(val, val + 1, 100) for val in starts] # generate 100 points of sine wave
+    # benign_data = [[math.sin(val)] for val in range(data_size)] # for sine numbers
+    # print('Benign data: {}'.format(benign_data))
     # benign_data = np.array([[randint(range_min, random_range)*2 + random()] for _ in range(data_size)], dtype=data_type)
-    dataset = tf.data.Dataset.from_tensor_slices(benign_data)
+    dataset = tf.data.Dataset.from_tensor_slices(tf.cast(benign_data, dtype=data_type))
     dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
     print('Dataset: {}'.format(dataset.take(10)))
     gan = GAN(discriminator=discrim, generator=generator, latent_dim=latent_dimension)
     gan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
-                g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
+                # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
                 # d_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True)
-                # g_loss_fn=GeneratorWassersteinLoss(),
+                g_loss_fn=GeneratorWassersteinLoss(),
                 d_loss_fn=DiscriminatorWassersteinLoss()
     )
-    gan.fit(dataset.take(100), epochs=20)
+    gan.fit(dataset, epochs=20)
     for num in range(-20, 21):
         random_latent_vectors = tf.random.normal(shape=(1, latent_dimension))
         print('Value at {}: {}'.format(num, generator.predict(random_latent_vectors)))
-    # # define training loop
-    # print("Entering loop")
-    # while passes < min_passes and epoch < epochs:
-    #     print('Current epoch: {}'.format(epoch+1))
-    #     trained = True
-    #     gen_input = np.array([randint(range_min, random_range) for _ in range(data_size)], dtype=data_type)
-    #     fakes = generator.predict(gen_input)
-    #     guesses = discrim.predict(fakes)
-    #     print(guesses)
-    #     for guess in guesses:
-    #         if guess[0] != 0.5: # probability rule
-    #             trained = False
-    #             break
-    #     passes += 1 if trained else 0
-
-    #     if passes < min_passes:
-    #         real = np.array([[2 * randint(even_min, even_range)] for _ in range(data_size)], dtype=data_type)
-    #         fakes_labels, real_labels = np.array([[1, 0] for _ in fakes], dtype=data_type), np.array([[0, 1] for _ in real], dtype=data_type)
-    #         discrim.fit(np.concatenate((fakes, real)), np.concatenate((fakes_labels, real_labels)))
-    #         print(discrim.predict(fakes))
-    #         generator.fit(discrim.predict(fakes), fakes_labels)
-    #         epoch += 1
-    #     else:
-    #         print('Discriminator reached equilibrium')
-
