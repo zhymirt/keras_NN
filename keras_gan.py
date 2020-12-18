@@ -9,15 +9,14 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense
 from tensorflow.python.keras.utils.np_utils import to_categorical
-from torch import sin
-
 
 def discrim_wasserstein_loss_fn(y_true, y_pred):
     difference = y_true - y_pred # tf.subtract(y_true, y_pred)
-    return -tf.reduce_mean(difference, axis=-1)
+    return tf.reduce_sum(tf.abs(difference), axis=-1)
+    # return tf.reduce_mean(y_true * y_pred)
 
 def gen_wasserstein_loss_fn(y_true, y_pred):
-    return -tf.reduce_mean(y_pred, axis=-1)
+    return tf.reduce_mean(-y_pred, axis=-1)
 
 def generate_sine(start, end, points, amplitude=1, frequency=1):
     time = np.linspace(0, 2, 100)
@@ -25,7 +24,8 @@ def generate_sine(start, end, points, amplitude=1, frequency=1):
     return signal
 
 def plot_data(data):
-    plt.plot(np.linspace(0, 100, num=100), data)
+    plt.plot(np.linspace(0, 1, num=100), data)
+    plt.show()
 
 class DiscriminatorWassersteinLoss(keras.losses.Loss):
     def call(self, y_true, y_pred):
@@ -67,19 +67,17 @@ class GAN(keras.Model):
         generated = self.generator(random_latent_vectors)
         print(generated)
         combined = tf.concat([real_images, generated], axis=0)
-        # fakes_labels_temp = tf.zeros((batch_size, 1))
-        # print(fakes_labels_temp)
-        # fakes_labels = keras.utils.to_categorical(fakes_labels_temp, num_classes=2)
-        # fakes_labels, real_labels = np.array([[1, 0] for _ in range(batch_size)], dtype=data_type), np.array([[0, 1] for _ in range(batch_size)], dtype=data_type)
-        # labels = tf.concat((fakes_labels, real_labels))
 
         labels = tf.concat(
             [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0
         )
+        labels = tf.concat(
+            [tf.ones((batch_size, 1)), -1*tf.ones((batch_size, 1))], axis=0
+        )
         fakes_labels = tf.ones((batch_size, 1))
         with tf.GradientTape() as tape:
-            # d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
-            d_loss = self.d_loss_fn(labels, self.discriminator(combined))
+            d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
+            # d_loss = self.d_loss_fn(labels, self.discriminator(combined))
         grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
         self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
         with tf.GradientTape() as tape:
@@ -148,7 +146,7 @@ if __name__ == '__main__':
         [
             Dense(10, input_shape=(vector_size,), activation='relu'),
             Dense(100, activation='relu'),
-            Dense(1)
+            Dense(1, activation='relu')
         ]
     )
     # discrim.compile(optimizer='adam', loss=keras.losses.BinaryCrossentropy(from_logits=True))
@@ -169,14 +167,16 @@ if __name__ == '__main__':
     epoch, epochs = 0, 10
     batch_size = 64
     label_alias = {'fake': 0, 'real': 1}
-    starts = [randint(0, 100)/100 for _ in range(1000)] # generate n beginning data points
-    benign_data = [generate_sine(val, val + 1, 100) for val in starts] # generate 100 points of sine wave
+    starts = [randint(1, 2) for _ in range(100000)] # generate n beginning data points
+    benign_data = [generate_sine(0, 1, 100, frequency=val) for val in starts] # generate 100 points of sine wave
     # benign_data = [[math.sin(val)] for val in range(data_size)] # for sine numbers
     # print('Benign data: {}'.format(benign_data))
+    # for num, image in zip(range(3), benign_data):
+    #     plot_data(image)
     # benign_data = np.array([[randint(range_min, random_range)*2 + random()] for _ in range(data_size)], dtype=data_type)
     dataset = tf.data.Dataset.from_tensor_slices(tf.cast(benign_data, dtype=data_type))
     dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
-    print('Dataset: {}'.format(dataset.take(10)))
+    # print('Dataset: {}'.format(dataset.take(10)))
     gan = GAN(discriminator=discrim, generator=generator, latent_dim=latent_dimension)
     gan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
@@ -185,7 +185,8 @@ if __name__ == '__main__':
                 g_loss_fn=GeneratorWassersteinLoss(),
                 d_loss_fn=DiscriminatorWassersteinLoss()
     )
-    gan.fit(dataset, epochs=20)
-    for num in range(-20, 21):
-        random_latent_vectors = tf.random.normal(shape=(1, latent_dimension))
-        print('Value at {}: {}'.format(num, generator.predict(random_latent_vectors)))
+    gan.fit(dataset, epochs=10)
+    for num in range(3):
+        # random_latent_vectors = tf.random.normal(shape=(1, latent_dimension))
+        # print('Value at {}: {}'.format(num, generator.predict(random_latent_vectors)))
+        plot_data(generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0])
