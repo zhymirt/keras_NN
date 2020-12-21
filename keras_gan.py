@@ -8,6 +8,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense
+from tensorflow.python.keras.layers.core import Reshape
 from tensorflow.python.keras.utils.np_utils import to_categorical
 from torch import sin
 
@@ -59,13 +60,13 @@ class GAN(keras.Model):
         if isinstance(real_images, tuple):
             real_images = real_images[0]
         data_type = real_images.dtype
-        print(tf.shape(real_images)[0])
-        print(real_images.shape[0])
+        print(real_images)
         batch_size = tf.shape(real_images)[0]
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim))
         print(random_latent_vectors)
         generated = self.generator(random_latent_vectors)
         print(generated)
+        # exit()
         combined = tf.concat([real_images, generated], axis=0)
         # fakes_labels_temp = tf.zeros((batch_size, 1))
         # print(fakes_labels_temp)
@@ -152,13 +153,31 @@ if __name__ == '__main__':
         ]
     )
     # discrim.compile(optimizer='adam', loss=keras.losses.BinaryCrossentropy(from_logits=True))
-    generator = keras.Sequential([
-        Dense(100, activation='relu', input_shape=(latent_dimension,)),
-        Dense(100, activation='relu'),
-        Dense(100, activation='relu'),
-        Dense(40, activation='relu'),
-        Dense(vector_size, activation='relu')
-    ])
+    # generator = keras.Sequential([
+    #     Dense(100, activation='relu', input_shape=(latent_dimension,)),
+    #     Dense(100, activation='relu'),
+    #     Dense(100, activation='relu'),
+    #     Dense(40, activation='relu'),
+    #     Dense(vector_size, activation='relu')
+    # ])
+    # print(generator.input_shape)
+    # print(generator.output_shape)
+    generator = keras.Sequential(
+        [
+            layers.Reshape((latent_dimension, 1,), input_shape=(latent_dimension,)),
+            layers.Conv1DTranspose(200, (4), strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1DTranspose(200, (4), strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(1, (4), strides=2, padding='same', activation='sigmoid'),
+            layers.Reshape((400,)),
+            layers.Dense(100)
+        ],
+        name="generator",
+    )
+    # print(generator.input_shape)
+    # print(generator.output_shape)
+    # exit()
     # generator.compile(optimizer='adam', loss='mean_squared_logarithmic_error')
     # generator attempts to produce even numbers, discriminator will tell if true or not
     data_type = 'float32'
@@ -176,7 +195,7 @@ if __name__ == '__main__':
     # benign_data = np.array([[randint(range_min, random_range)*2 + random()] for _ in range(data_size)], dtype=data_type)
     dataset = tf.data.Dataset.from_tensor_slices(tf.cast(benign_data, dtype=data_type))
     dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
-    print('Dataset: {}'.format(dataset.take(10)))
+    # print('Dataset: {}'.format(dataset.take(10)))
     gan = GAN(discriminator=discrim, generator=generator, latent_dim=latent_dimension)
     gan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
