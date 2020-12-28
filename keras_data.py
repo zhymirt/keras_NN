@@ -1,13 +1,17 @@
 import numpy as np
+import tensorflow as tf
+
 from matplotlib import pyplot as plt
 
-
-def generate_sine(start, end, points, amplitude=1, frequency=1):
-    time = np.linspace(0, 2, 100)
-    signal = amplitude*np.sin(2*np.pi*frequency*time)
-    return signal
-
-def plot_data(data, show=False):
-    plt.plot(np.linspace(0, 2, num=100), data)
+def plot_data(x_values, y_values, show=False, save=True, save_path=''):
+    plt.plot(x_values, y_values)
+    if save and save_path:
+        plt.savefig(save_path)
     if show:
         plt.show()
+
+def data_to_dataset(data, dtype='float32', batch_size=64, shuffle=True):
+    dataset = tf.data.Dataset.from_tensor_slices(tf.cast(data, dtype=dtype))
+    if shuffle:
+        dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
+    return dataset

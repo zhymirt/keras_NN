@@ -12,7 +12,7 @@ from tensorflow.python.keras.layers.core import Reshape
 
 from custom_losses import (DiscriminatorWassersteinLoss,
                                     GeneratorWassersteinLoss)
-from keras_data import generate_sine, plot_data
+from keras_data import plot_data
 
 # def discrim_wasserstein_loss_fn(y_true, y_pred):
 #     difference = y_true - y_pred # tf.subtract(y_true, y_pred)
@@ -21,10 +21,10 @@ from keras_data import generate_sine, plot_data
 # def gen_wasserstein_loss_fn(y_true, y_pred):
 #     return -tf.reduce_mean(y_pred, axis=-1)
 
-# def generate_sine(start, end, points, amplitude=1, frequency=1):
-#     time = np.linspace(0, 2, 100)
-#     signal = amplitude*np.sin(2*np.pi*frequency*time)
-#     return signal
+def generate_sine(start, end, points, amplitude=1, frequency=1):
+    time = np.linspace(0, 2, 100)
+    signal = amplitude*np.sin(2*np.pi*frequency*time)
+    return signal
 
 # def plot_data(data, show=False):
 #     plt.plot(np.linspace(0, 2, num=100), data)
