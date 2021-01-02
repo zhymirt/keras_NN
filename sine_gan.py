@@ -21,13 +21,11 @@ def generate_sine(start, end, points, amplitude=1, frequency=1):
     signal = amplitude*np.sin(2*np.pi*frequency*time)
     return signal
 
-def plot_sine(data, show=False):
-    plot_data(np.linspace(start_point, end_point, num=vector_size), data, show=show)
+def plot_sine(data, show=False, save=False, save_path=''):
+    plot_data(np.linspace(start_point, end_point, num=vector_size), data, show=show, save=save, save_path=save_path)
 
 if __name__ == '__main__':
-    latent_dimension, variations = 164, 100
-    data_type = 'float32'
-    data_size, batch_size = 1e4, 64
+    latent_dimension, variations, data_size, batch_size, data_type = 128, 100, 1e4, 64, 'float32'
     benign_data = [generate_sine(start_point, end_point, vector_size, frequency=randint(1, 3)) for _ in range(int(data_size))] # generate 100 points of sine wave
     for idx in range(4):
         plot_sine(benign_data[idx], show=False)
@@ -36,9 +34,9 @@ if __name__ == '__main__':
     discrim = keras.Sequential(
     [
         layers.Reshape((vector_size, 1,), input_shape=(vector_size,)),
-        layers.Conv1D(64, (3), strides=(2), padding="same"),
+        layers.Conv1D(64, (3), strides=(3), padding="same"),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(128, (3), strides=(2), padding="same"),
+        layers.Conv1D(128, (3), strides=(3), padding="same"),
         layers.LeakyReLU(alpha=0.2),
         layers.GlobalMaxPooling1D(),
         layers.Reshape((128,)),
@@ -53,9 +51,9 @@ if __name__ == '__main__':
             layers.Dense(int(vector_size * 0.25) * latent_dimension, input_shape=(latent_dimension,)),
             layers.LeakyReLU(alpha=0.2),
             layers.Reshape((-1, latent_dimension)),
-            layers.Conv1DTranspose(latent_dimension, 4, strides=2, padding='same'),
+            layers.Conv1DTranspose(128, 7, strides=2, padding='same'),
             layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(latent_dimension, 4, strides=2, padding='same'),
+            layers.Conv1DTranspose(256, 7, strides=2, padding='same'),
             layers.LeakyReLU(alpha=0.2),
             layers.Conv1D(1, (vector_size), padding='same', activation='sigmoid'),
             layers.Reshape((vector_size,))
@@ -78,8 +76,10 @@ if __name__ == '__main__':
                 g_loss_fn=GeneratorWassersteinLoss(),
                 d_loss_fn=DiscriminatorWassersteinLoss()
     )
-    gan.fit(dataset, epochs=10)
-    plot_sine(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], show=True)
-    for _ in range(3):
-        plot_sine(generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], show=True)
-    plot_sine(generator.predict(tf.ones(shape=(1, latent_dimension)))[0], show=True)
+    gan.fit(dataset, epochs=50)
+    generator.save('sine_generator.h5')
+    discrim.save('sine_discriminator.h5')
+    plot_sine(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], show=True, save=True, save_path='./results/sine_zeros')
+    for idx in range(3):
+        plot_sine(generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], show=True, save=True, save_path='./results/sine_norm'+str(idx))
+    plot_sine(generator.predict(tf.ones(shape=(1, latent_dimension)))[0], show=True, save=True, save_path='./results/sine_ones')

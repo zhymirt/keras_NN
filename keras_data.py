@@ -9,6 +9,7 @@ def plot_data(x_values, y_values, show=False, save=True, save_path=''):
         plt.savefig(save_path)
     if show:
         plt.show()
+    plt.close()
 
 def data_to_dataset(data, dtype='float32', batch_size=64, shuffle=True):
     dataset = tf.data.Dataset.from_tensor_slices(tf.cast(data, dtype=dtype))
