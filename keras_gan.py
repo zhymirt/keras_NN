@@ -9,10 +9,12 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense
 from tensorflow.python.keras.layers.core import Reshape
-
+from tensorflow.keras.constraints import min_max_norm
 from custom_losses import (DiscriminatorWassersteinLoss,
                                     GeneratorWassersteinLoss)
 from keras_data import plot_data
+
+# add kernel_constraint=min_max_norm(-1, 1) parameter to layer to normalize weights to bounds
 
 # def discrim_wasserstein_loss_fn(y_true, y_pred):
 #     difference = y_true - y_pred # tf.subtract(y_true, y_pred)
