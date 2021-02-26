@@ -3,8 +3,10 @@ import tensorflow as tf
 
 from matplotlib import pyplot as plt
 
-def plot_data(x_values, y_values, show=False, save=True, save_path=''):
+def plot_data(x_values, y_values, trend_data=None, show=False, save=True, save_path=''):
     plt.plot(x_values, y_values)
+    if trend_data is not None and len(trend_data) > 0:
+        plt.plot(x_values, trend_data)
     if save and save_path:
         plt.savefig(save_path)
     if show:
