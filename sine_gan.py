@@ -67,8 +67,8 @@ if __name__ == '__main__':
         config = ConfigProto()
         config.gpu_options.allow_growth = True
         session = InteractiveSession(config=config)
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 1024, int(1e2), 1, 'float32'
-    save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 64, int(1e2), 1, 'float32'
+    save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('3_14_21_latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_cnn')
     early_stop = EarlyStopping(monitor='g_loss', mode='min', min_delta=1e-8, verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     callback_list = [checkpoint] # [early_stop, checkpoint]
@@ -80,21 +80,21 @@ if __name__ == '__main__':
     discrim = keras.Sequential(
     [
         layers.Reshape((vector_size, 1,), input_shape=(vector_size,), dtype=data_type),
-        layers.Conv1D(32, (5), strides=(3), dtype=data_type),
+        layers.Conv1D(16, (5), strides=(3), dtype=data_type),
         # layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2, dtype=data_type),
-        layers.Conv1D(32, (3), strides=(3), dtype=data_type),
+        layers.Conv1D(8, (3), strides=(3), dtype=data_type),
         # layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2, dtype=data_type),
-        layers.Conv1D(32, (3), dtype=data_type),
+        layers.Conv1D(8, (3), dtype=data_type),
         # layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2, dtype=data_type),
-        layers.GlobalAveragePooling1D(),
+        # layers.GlobalAveragePooling1D(),
         # layers.GlobalMaxPooling1D(),
         layers.Flatten(),
-        layers.Dense(32),
+        layers.Dense(64),
         layers.LeakyReLU(alpha=0.2),
-        layers.Dense(16),
+        layers.Dense(32),
         layers.LeakyReLU(alpha=0.2),
         layers.Dense(1, dtype=data_type) #, activation='sigmoid'),
     ],
@@ -131,12 +131,15 @@ if __name__ == '__main__':
             # layers.LeakyReLU(alpha=0.2),
             layers.Reshape((latent_dimension, 1), input_shape=(latent_dimension,), dtype=data_type),
             layers.Conv1DTranspose(16, 3, strides=3, dtype=data_type),
-            # layers.BatchNormalization(),
+            layers.BatchNormalization(),
             layers.LeakyReLU(alpha=0.2, dtype=data_type),
             layers.Conv1DTranspose(16, 3, strides=3, dtype=data_type),
-            # layers.BatchNormalization(),
+            layers.BatchNormalization(),
             layers.LeakyReLU(alpha=0.2, dtype=data_type),
-            layers.Conv1D(1, (3), strides=3, dtype=data_type),
+            layers.Conv1DTranspose(16, 3, strides=3, dtype=data_type),
+            layers.BatchNormalization(),
+            layers.LeakyReLU(alpha=0.2, dtype=data_type),
+            layers.Conv1D(1, (3), dtype=data_type),
             layers.LeakyReLU(alpha=0.2, dtype=data_type),
             # layers.BatchNormalization(),
             # layers.Reshape((vector_size,)),
@@ -146,7 +149,7 @@ if __name__ == '__main__':
 
             # layers.Dense(2000, activation='relu'),
             # layers.Dense(vector_size, activation='relu')
-            layers.Dense(64, activation=tf.cos, dtype=data_type),
+            layers.Dense(32, activation=tf.cos, dtype=data_type),
             # layers.BatchNormalization(),
             layers.Dense(vector_size, activation='tanh', dtype=data_type)
         ],
@@ -184,12 +187,12 @@ if __name__ == '__main__':
     )
     wgan.set_train_epochs(5, 1)
     wgan.fit(dataset, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
-    # generator.save('sine_generator')
-    # discrim.save('sine_discriminator')
+    generator.save('./models/sine_generator')
+    discrim.save('./models/sine_discriminator')
     from pyts.image import RecurrencePlot
     rp, trend = RecurrencePlot(threshold='point', percentage=20), generate_sine(start_point, end_point, vector_size, amplitude=1, frequency=1)
     plot_recurrence(np.linspace(start_point, end_point, vector_size), generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], rp, show=True, save=False)
-    generate_image_summary(generator=generator, latent_dim_size=latent_dimension, num_rand_images=3, show=True, save=False,
+    generate_image_summary(generator=generator, latent_dim_size=latent_dimension, num_rand_images=3, show=True, save=True,
      save_dir='./results', save_desc=save_desc, plot_trend=True, trend_signal=trend)
     # plot_sine(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], show=True, save=False, save_path='./results/sine_zeros' + save_desc)
     # plot_sine(standardize(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0]), show=True, save=False)
