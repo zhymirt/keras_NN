@@ -20,7 +20,7 @@ from keras_data import data_to_dataset, plot_data
 from keras_gan import GAN, WGAN
 
 
-start_point, end_point, vector_size = 0, 2, 1000
+start_point, end_point, vector_size = 0, 2, 6000
 
 def generate_sine(start, end, points, amplitude=1, frequency=1):
     time = np.linspace(start_point, end_point, vector_size)
@@ -67,9 +67,9 @@ if __name__ == '__main__':
         config = ConfigProto()
         config.gpu_options.allow_growth = True
         session = InteractiveSession(config=config)
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 2, int(1e2), 2, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 1024, int(1e2), 1, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
-    early_stop = EarlyStopping(monitor='g_loss', mode='min', verbose=1, patience=3)
+    early_stop = EarlyStopping(monitor='g_loss', mode='min', min_delta=1e-8, verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     callback_list = [checkpoint] # [early_stop, checkpoint]
     benign_data = [generate_sine(start_point, end_point, vector_size, frequency=1) for _ in range(int(data_size))] # generate 100 points of sine wave
@@ -79,46 +79,49 @@ if __name__ == '__main__':
     # create discriminator and generator
     discrim = keras.Sequential(
     [
-        layers.Reshape((vector_size, 1,), input_shape=(vector_size,)),
-        layers.Conv1D(256, (5), strides=(2), padding="same"),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(256, (3), strides=(2), padding="same"),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(256, (3), strides=2, padding="same"),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        layers.Reshape((vector_size, 1,), input_shape=(vector_size,), dtype=data_type),
+        layers.Conv1D(32, (5), strides=(3), dtype=data_type),
+        # layers.BatchNormalization(),
+        layers.LeakyReLU(alpha=0.2, dtype=data_type),
+        layers.Conv1D(32, (3), strides=(3), dtype=data_type),
+        # layers.BatchNormalization(),
+        layers.LeakyReLU(alpha=0.2, dtype=data_type),
+        layers.Conv1D(32, (3), dtype=data_type),
+        # layers.BatchNormalization(),
+        layers.LeakyReLU(alpha=0.2, dtype=data_type),
         layers.GlobalAveragePooling1D(),
         # layers.GlobalMaxPooling1D(),
         layers.Flatten(),
-        # layers.Dense(3000),
-        # layers.LeakyReLU(alpha=0.2),
-        # layers.Dense(2000),
-        # layers.LeakyReLU(alpha=0.2),
-        layers.Dense(1) #, activation='sigmoid'),
+        layers.Dense(32),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Dense(16),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Dense(1, dtype=data_type) #, activation='sigmoid'),
     ],
     name="discriminator",
     )
-    discrim = keras.Sequential([
-        layers.Dense(vector_size*4, input_shape=(vector_size,)),
-        layers.Dense(1024),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Dense(1024),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Dense(1024),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Dense(1024),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Dense(1)
-    ],
-    name="discriminator",
-    )
+    # discrim = keras.Sequential([
+    #     layers.Dense(vector_size, input_shape=(vector_size,), dtype=data_type),
+    #     layers.BatchNormalization(),
+    #     layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #     layers.Dense(32, dtype=data_type),
+    #     layers.BatchNormalization(),
+    #     layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #     layers.Dense(32, dtype=data_type),
+    #     layers.BatchNormalization(),
+    #     layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #     layers.Dense(32, dtype=data_type),
+    #     layers.BatchNormalization(),
+    #     layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #     layers.Dense(32, dtype=data_type),
+    #     layers.BatchNormalization(),
+    #     layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #     layers.Dense(1, dtype=data_type)
+    # ],
+    # name="discriminator",
+    # )
     discrim.summary()
+    print('Discriminator data type: '+discrim.dtype)
     # exit()
     generator = keras.Sequential(
         [
@@ -126,15 +129,16 @@ if __name__ == '__main__':
             # layers.LeakyReLU(alpha=0.2),
             # layers.Dense(latent_dimension),
             # layers.LeakyReLU(alpha=0.2),
-            layers.Reshape((latent_dimension, 1), input_shape=(latent_dimension,)),
-            layers.Conv1DTranspose(256, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(256, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(alpha=0.2),
-            layers.Conv1D(1, (3), padding='same', activation='tanh'),
-            layers.BatchNormalization(),
+            layers.Reshape((latent_dimension, 1), input_shape=(latent_dimension,), dtype=data_type),
+            layers.Conv1DTranspose(16, 3, strides=3, dtype=data_type),
+            # layers.BatchNormalization(),
+            layers.LeakyReLU(alpha=0.2, dtype=data_type),
+            layers.Conv1DTranspose(16, 3, strides=3, dtype=data_type),
+            # layers.BatchNormalization(),
+            layers.LeakyReLU(alpha=0.2, dtype=data_type),
+            layers.Conv1D(1, (3), strides=3, dtype=data_type),
+            layers.LeakyReLU(alpha=0.2, dtype=data_type),
+            # layers.BatchNormalization(),
             # layers.Reshape((vector_size,)),
             # layers.Reshape((4 * vector_size,)),
             layers.Flatten(),
@@ -142,28 +146,30 @@ if __name__ == '__main__':
 
             # layers.Dense(2000, activation='relu'),
             # layers.Dense(vector_size, activation='relu')
-            layers.Dense(vector_size, activation=tf.cos),
-            layers.BatchNormalization(),
-            layers.Dense(vector_size, activation='tanh')
+            layers.Dense(64, activation=tf.cos, dtype=data_type),
+            # layers.BatchNormalization(),
+            layers.Dense(vector_size, activation='tanh', dtype=data_type)
         ],
         name="generator",
     )
-    generator = keras.Sequential(
-        [
-            layers.Dense(vector_size * latent_dimension, input_shape=(latent_dimension,)),
-            layers.Dense(1024),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(alpha=0.2),
-            layers.Dense(1024),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(alpha=0.2),
-            layers.Dense(1024),
-            layers.BatchNormalization(),
-            layers.Dense(1024, activation=tf.cos),
-            layers.Dense(vector_size, activation='tanh')
-        ],
-        name="generator",
-    )
+    # generator = keras.Sequential(
+    #     [
+    #         layers.Dense(2 * latent_dimension, input_shape=(latent_dimension,), dtype=data_type),
+    #         layers.BatchNormalization(),
+    #         layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #         layers.Dense(32, dtype=data_type),
+    #         layers.BatchNormalization(),
+    #         layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #         layers.Dense(32, dtype=data_type),
+    #         layers.BatchNormalization(),
+    #         layers.LeakyReLU(alpha=0.2, dtype=data_type),
+    #         layers.Dense(32, dtype=data_type),
+    #         layers.BatchNormalization(),
+    #         layers.Dense(32, activation=tf.cos, dtype=data_type),
+    #         layers.Dense(vector_size, activation='tanh', dtype=data_type)
+    #     ],
+    #     name="generator",
+    # )
     generator.summary()
     # d_optimizer = keras.optimizers.Adam(learning_rate=0.0003)
     # exit()
@@ -176,10 +182,10 @@ if __name__ == '__main__':
                 g_loss_fn=GeneratorWassersteinLoss(),
                 d_loss_fn=DiscriminatorWassersteinLoss()
     )
-    wgan.set_train_epochs(4, 1)
-    wgan.fit(dataset, epochs=epochs, callbacks=callback_list)
-    generator.save('sine_generator.h5')
-    discrim.save('sine_discriminator.h5')
+    wgan.set_train_epochs(5, 1)
+    wgan.fit(dataset, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
+    # generator.save('sine_generator')
+    # discrim.save('sine_discriminator')
     from pyts.image import RecurrencePlot
     rp, trend = RecurrencePlot(threshold='point', percentage=20), generate_sine(start_point, end_point, vector_size, amplitude=1, frequency=1)
     plot_recurrence(np.linspace(start_point, end_point, vector_size), generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], rp, show=True, save=False)
