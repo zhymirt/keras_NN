@@ -33,7 +33,7 @@ def plot_sine(data, show=False, save=False, save_path='', plot_trend=False, tren
       show=show, save=save, save_path=save_path)
 
 def generate_image_summary(generator, latent_dim_size, num_rand_images=1, plot_trend=False, trend_signal=None, show=False, save=False, save_dir='./', save_desc=''):
-    plot_sine(generator.predict(tf.zeros(shape=(1, latent_dim_size)))[0], show=show, save=save, save_path=os.path.join( save_dir, '/sine_zeros + save_desc'),
+    plot_sine(generator.predict(tf.zeros(shape=(1, latent_dim_size)))[0], show=show, save=save, save_path=os.path.join( save_dir, 'sine_zeros + save_desc'),
      plot_trend=plot_trend, trend_signal=trend_signal)
     for idx in range(num_rand_images):
         plot_sine(generator.predict(tf.random.normal(shape=(1, latent_dim_size)))[0], show=True, save=save, save_path=os.path.join( save_dir, 'sine_norm' + save_desc + '_' + str(idx)),
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         config = ConfigProto()
         config.gpu_options.allow_growth = True
         session = InteractiveSession(config=config)
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 64, int(1e2), 1, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 1024, int(1e2), 1, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('3_14_21_latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_cnn')
     early_stop = EarlyStopping(monitor='g_loss', mode='min', min_delta=1e-8, verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
