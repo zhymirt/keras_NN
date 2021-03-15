@@ -23,7 +23,7 @@ from keras_gan import GAN, WGAN
 start_point, end_point, vector_size = 0, 2, 6000
 
 def generate_sine(start, end, points, amplitude=1, frequency=1):
-    time = np.linspace(start_point, end_point, vector_size)
+    time = np.linspace(start, end, points)
     signal = amplitude*np.sin(2*np.pi*frequency*time)
     return signal
 
