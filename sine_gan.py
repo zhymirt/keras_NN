@@ -67,8 +67,8 @@ if __name__ == '__main__':
     #     config = ConfigProto()
     #     config.gpu_options.allow_growth = True
     #     session = InteractiveSession(config=config)
-    conditional, discriminator_mode, generator_mode = True, 'cnn', 'cnn'
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 1024, int(1e2), 1, 'float32'
+    conditional, discriminator_mode, generator_mode, verbosity = True, 'cnn', 'cnn', 2
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 512, int(1e2), 1, 'float32'
     save_desc = '_3_14_21_latent_dimension_{}_epochs_{}_data_size_{}_batch_size_{}_type_cnn_cnn'.format(latent_dimension, epochs, data_size, batch_size)
     early_stop = EarlyStopping(monitor='g_loss', mode='min', min_delta=1e-8, verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
     # create discriminator and generator
     if conditional:
-        save_desc = '_3_19_21_conditional_latent_dimension_{}_epochs_{}_data_size_{}_batch_size_{}_type_cnn_cnn'.format(latent_dimension, epochs, data_size, batch_size)
+        save_desc = '_3_19_21_review_conditional_latent_dimension_{}_epochs_{}_data_size_{}_batch_size_{}_type_cnn_cnn'.format(latent_dimension, epochs, data_size, batch_size)
         benign_data, labels = [], []
         for _ in range(int(data_size)):
             frequency = randint(1, 3)
@@ -100,8 +100,12 @@ if __name__ == '__main__':
 
         discriminator = layers.Concatenate()([discriminator_label_side, discriminator_vector_side])
         discriminator = layers.Conv1D(16, 5, strides=3)(discriminator)
+        # discriminator = layers.BatchNormalization()(discriminator)
         discriminator = layers.LeakyReLU(alpha=0.2, dtype=data_type)(discriminator)
         discriminator = layers.Conv1D(8, (3), strides=(3), dtype=data_type)(discriminator)
+        # discriminator = layers.BatchNormalization()(discriminator)
+        discriminator = layers.LeakyReLU(alpha=0.2, dtype=data_type)(discriminator)
+        discriminator = layers.Conv1D(8, (3), dtype=data_type)(discriminator)
         # discriminator = layers.BatchNormalization()(discriminator)
         discriminator = layers.LeakyReLU(alpha=0.2, dtype=data_type)(discriminator)
         discriminator = layers.Conv1D(1, (3), dtype=data_type)(discriminator)
@@ -159,15 +163,15 @@ if __name__ == '__main__':
         cwgan.set_train_epochs(5, 1)
         generator.predict((tf.zeros(shape=(1, latent_dimension)), tf.constant([1])))
         cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
-        # generator.save('./models/sine_generator')
-        # discrim.save('./models/sine_discriminator')
+        generator.save('./models/conditional_sine_generator')
+        discriminator.save('./models/conditional_sine_discriminator')
         from pyts.image import RecurrencePlot
         rp, trend = RecurrencePlot(threshold='point', percentage=20), generate_sine(start_point, end_point, vector_size, amplitude=1, frequency=1)
         plot_recurrence(np.linspace(start_point, end_point, vector_size), generator.predict((tf.zeros(shape=(1, latent_dimension)), tf.constant([1])))[0], rp, show=True, save=False)
-        plot_sine(generator.predict([tf.zeros(shape=(1, latent_dimension)), tf.constant([1])])[0], show=True, save=True, save_path='./results/sine_zeros' + save_desc)
+        plot_sine(generator.predict([tf.zeros(shape=(1, latent_dimension)), tf.constant([1])])[0], show=True, save=False, save_path='./results/sine_zeros' + save_desc)
         for idx in range(3):
-            plot_sine(generator.predict((tf.random.normal(shape=(1, latent_dimension)), tf.constant([randint(1, 3)])))[0], show=True, save=True, save_path='./results/sine_norm' + save_desc + '_' + str(idx))
-        plot_sine(generator.predict((tf.ones(shape=(1, latent_dimension)), tf.constant([1])))[0], show=True, save=True, save_path='./results/sine_ones' + save_desc)
+            plot_sine(generator.predict((tf.random.normal(shape=(1, latent_dimension)), tf.constant([idx + 1])))[0], show=True, save=False, save_path='./results/sine_norm' + save_desc + '_' + str(idx))
+        plot_sine(generator.predict((tf.ones(shape=(1, latent_dimension)), tf.constant([1])))[0], show=True, save=False, save_path='./results/sine_ones' + save_desc)
         exit()
     else:
         if discriminator_mode == 'cnn':
