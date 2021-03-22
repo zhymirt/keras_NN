@@ -1,4 +1,5 @@
 import os
+from re import L
 
 import numpy as np
 import tensorflow as tf
@@ -6,11 +7,14 @@ from matplotlib import pyplot as plt
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.python.keras.backend import sign
+from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
+from tensorflow.python.keras.layers.convolutional import Conv2D
+from tensorflow.python.keras.layers.normalization_v2 import BatchNormalization
 
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN
+from keras_gan import WGAN
 
 keys = ['time', 'accel', 'intaccel', 'sg1', 'sg2', 'sg3']
 save_paths = list(map(lambda x: 'time_' + x, keys[1:]))
@@ -69,7 +73,7 @@ if __name__ == '__main__':
     data_type, batch_size = 'float32', 1
     # print(os.getcwd())
     # exit()
-    time, benign_data = read_file_to_arrays('./signal_data/T04.txt')[0], [ read_file_to_arrays(os.path.join('./signal_data', name))[1] for name in ['T04.txt',
+    time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [ read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
         'T04repeat.txt', 'T05.txt', 'T06.txt', 'T07.txt', 'T08.txt']]
     data_size, num_data_types = len(time), len(keys) -1
     vector_size, latent_dimension = data_size, 164
@@ -78,59 +82,74 @@ if __name__ == '__main__':
     discriminator = keras.Sequential(
     [
         # keras.Input(shape=(len(signals[0]['time']), len(keys) - 1, 1)),
-        layers.Reshape((data_size, num_data_types, 1), input_shape=(data_size, num_data_types,)),
-        layers.Conv2D(64, (3, 3), strides=(2, 2), padding="same", ),
+        layers.Reshape((vector_size, num_data_types, 1), input_shape=(vector_size, num_data_types,)),
+        layers.Conv2D(16, (3, 1), strides=(3, 1)),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(128, (3, 3), strides=(2, 2), padding="same"),
+        layers.Conv2D(64, (3, 1), strides=(3, 1)),
         layers.LeakyReLU(alpha=0.2),
-        layers.GlobalMaxPooling2D(),
+        layers.Conv2D(64, (3, 1), strides=(3, 1)),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(1, (3, 1), (1, 1)),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Flatten(),
+        # layers.GlobalMaxPooling2D(),
+        layers.Dense(64),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Dense(32),
+        layers.LeakyReLU(alpha=0.2),
         layers.Dense(1),
     ],
     name="discriminator",
     )
     discriminator.summary()
-    # print(np.array(benign_data).shape)
+    print(np.array(benign_data).shape)
     # exit()
 
     # Create the generator
     # latent_dim = 128
-    mini_data = int((data_size + 1) / 42)
+    mini_data = 171
     generator = keras.Sequential(
         [
             # keras.Input(shape=(latent_dimension,)),
             # We want to generate 128 coefficients to reshape into a 7x7x128 map
-            layers.Dense(mini_data * num_data_types * latent_dimension, input_shape=(latent_dimension,)),
+            layers.Dense(mini_data * num_data_types, input_shape=(latent_dimension,)),
             layers.LeakyReLU(alpha=0.2),
-            layers.Reshape((num_data_types, mini_data, latent_dimension)),
-            layers.Conv2DTranspose(64, (num_data_types, num_data_types), strides=(1, 6), padding="same"),
+            layers.Reshape((mini_data, num_data_types, 1,)),
+            layers.Conv2DTranspose(16, (3, 1), strides=(2, 1)),
+            layers.BatchNormalization(),
             layers.LeakyReLU(alpha=0.2),
-            layers.Conv2DTranspose(128, (num_data_types, num_data_types), strides=(1, 7), padding="same"),
+            layers.Conv2DTranspose(16, (3, 1), strides=(2, 1)),
+            layers.BatchNormalization(),
             layers.LeakyReLU(alpha=0.2),
-            layers.Conv2D(1, (num_data_types, num_data_types), padding="same", activation="sigmoid"),
-            layers.Cropping2D(((0, 0), (0, 1))),
-            # layers.Reshape((data_size, num_data_types)),
-            layers.Flatten(),
-            layers.Dense(1000, activation='relu'),
-            layers.Dense(500, activation=tf.math.cos),
-            layers.Dense(data_size * num_data_types, activation='tanh'),
-            layers.Reshape((data_size, num_data_types))
+            layers.Conv2DTranspose(16, (3, 1), strides=(2, 1)),
+            layers.BatchNormalization(),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv2DTranspose(16, (3, 1), strides=(2, 1)),
+            layers.BatchNormalization(),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv2DTranspose(16, (3, 1), strides=(2, 1)),
+            layers.BatchNormalization(),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv2D(1, (3, 1), activation='tanh'),
+            layers.Reshape((data_size, num_data_types,))
         ],
         name="generator",
     )
-    generator.add
     generator.summary()
     # generator attempts to produce even numbers, discriminator will tell if true or not
-    gan = GAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
-    gan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
-                g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
+    wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
+    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
+                g_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
                 # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
                 # d_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True)
                 g_loss_fn=GeneratorWassersteinLoss(),
                 d_loss_fn=DiscriminatorWassersteinLoss()
     )
-    gan.fit(dataset, epochs=50)
+    # exit()
+    wgan.set_train_epochs(8, 1)
+    wgan.fit(dataset, epochs=128, batch_size=batch_size)
     # generator.save('af_generator.h5')
     # discriminator.save('af_discriminator.h5')
     # time = np.array(signals[0]['time'])
     prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0]
-    plot_data(time, np.transpose(np.array(prediction), (1, 0)) , show=True, save=True, save_path='./keras_NN/results/AF_v1_')
+    plot_data(time, np.transpose(np.array(prediction), (1, 0)) , show=True, save=False, save_path='./keras_NN/results/AF_v1_')
