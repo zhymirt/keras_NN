@@ -1,18 +1,13 @@
 import os
-from re import L
 
 import numpy as np
 import tensorflow as tf
+
 from matplotlib import pyplot as plt
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.python.keras.backend import sign
-from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
-from tensorflow.python.keras.layers.convolutional import Conv2D
-from tensorflow.python.keras.layers.normalization_v2 import BatchNormalization
-
-from custom_losses import (DiscriminatorWassersteinLoss,
-                           GeneratorWassersteinLoss)
+from tensorflow.keras.layers import LeakyReLU, Conv2D, BatchNormalization
+from custom_losses import (DiscriminatorWassersteinLoss, GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
 from keras_gan import WGAN
 
