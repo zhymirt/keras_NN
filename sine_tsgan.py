@@ -21,13 +21,14 @@ from keras_model_functions import plot_recurrence
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN, WGAN
-from sine_gan import *
+from keras_gan import GAN, WGAN, cWGAN
+from sine_gan import generate_conditional_image_summary, generate_sine, plot_sine
 from scipy import signal
 import matplotlib.pyplot as plt
 
 if __name__=='__main__':
     vector_size = 100
+    start_point, end_point = 0, 2
     latent_dimension, epochs, data_size, batch_size, data_type = 256, 32, int(1e2), 1, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
     early_stop = EarlyStopping(monitor='g_loss', mode='min', verbose=1, patience=3)
@@ -213,3 +214,10 @@ if __name__=='__main__':
     benign_data = np.array(benign_data)
     # print("Length of benign: {} length of synthetic: {}".format(len(benign_data[0]), len(synthetic_spectrograms[0])))
     sine_wave_wgan.fit(x=benign_data, y=synthetic_spectrograms, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
+    trend = generate_sine(start_point, end_point, vector_size)
+    time = np.linspace(start_point, end_point, num=vector_size)
+    generate_conditional_image_summary(generator_2, generator_1(tf.normal.random(shape=(1, latent_dimension))),
+             latent_dimension, time, 3, True, trend, show=True)
+
+    
+
