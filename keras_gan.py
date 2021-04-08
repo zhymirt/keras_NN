@@ -114,7 +114,8 @@ class WGAN(GAN):
 class cWGAN(WGAN):
     def train_step(self, data):
         if isinstance(data, tuple):
-            real_images, class_labels = data[0], data[1]
+            data = data[0]
+        real_images, class_labels = data[0], data[1]
         data_type = real_images.dtype
         batch_size = tf.shape(real_images)[0]
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
@@ -145,56 +146,7 @@ class cWGAN(WGAN):
         return {'d_loss': d_loss, 'g_loss': g_loss}   
 
 # class TSGAN(GAN):
-#     def __init__(self, discriminator, generator_1, generator_2, latent_dimension):
-#         super(GAN, self).__init__()
-#         self.discriminator = discriminator
-#         self.generator = generator
-#         self.latent_dim = latent_dimension
-#         self.discriminator_epochs = 1
-#         self.generator_epochs = 1
-
-#     def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn):
-#         super(GAN, self).compile()
-#         self.d_optimizer = d_optimizer
-#         self.g_optimizer = g_optimizer
-#         self.d_loss_fn = d_loss_fn
-#         self.g_loss_fn = g_loss_fn
-
-#     def train_step(self, real_images):
-#         if isinstance(real_images, tuple):
-#             real_images = real_images[0]
-#         data_type = real_images.dtype
-#         batch_size = tf.shape(real_images)[0]
-#         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim))
-#         generated = self.generator(random_latent_vectors)
-
-#         labels = tf.concat(
-#             [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0
-#         )
-#         fakes_labels = tf.ones((batch_size, 1))
-#         d_loss, g_loss = None, None
-#         lamb = 10
-#         for _ in range(self.discriminator_epochs):
-#             # print('discriminator train')
-#             with tf.GradientTape() as tape:
-#                 d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
-
-#                 r = tf.random.uniform(shape=[1])
-#                 x_hat = r*real_images + (1 - r)*generated
-#                 val = lamb*((abs(tf.reduce_mean(x_hat) - tf.reduce_mean(self.discriminator(x_hat))))**2)
-#                 # print('Current loss: ', d_loss)
-#                 # print('gradient penalty: ', val)
-#                 d_loss += val
-#                 # d_loss = self.d_loss_fn(labels, self.discriminator(combined))
-#             grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-#             self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
-#         for _ in range(self.generator_epochs):
-#             with tf.GradientTape() as tape:
-#                 predictions = self.discriminator(self.generator(random_latent_vectors))
-#                 g_loss = self.g_loss_fn(fakes_labels, predictions) # g_loss = self.g_loss_fn(None, predictions)
-#             grads = tape.gradient(g_loss, self.generator.trainable_weights)
-#             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
-#         return {'d_loss': d_loss, 'g_loss': g_loss}
+#     pass
 
 if __name__ == '__main__':
     # discriminator = keras.Sequential(
