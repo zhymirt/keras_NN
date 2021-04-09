@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 if __name__=='__main__':
     vector_size = 100
     start_point, end_point = 0, 2
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 512, int(1e3), 8, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 128, int(1e3), 8, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
     early_stop = EarlyStopping(monitor='g_loss', mode='min', verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
@@ -76,12 +76,12 @@ if __name__=='__main__':
     image_shape, flattened_image_shape = (51, 1), (51,)
     discriminator_1 = keras.Sequential([
         layers.Reshape((1,)+image_shape, input_shape=image_shape),
-        layers.Conv2D(16, (1, 5), strides=(1, 3)),
+        layers.Conv2D(64, (1, 5), strides=(1, 1)),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(16, (1, 3), strides=(1, 2)),
+        layers.Conv2D(128, (1, 3), strides=(1, 1)),
         layers.LeakyReLU(alpha=0.2),
-        # layers.Conv2D(16, (1, 3), strides=(1, 2)),
-        # layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(256, (1, 3), strides=(1, 1)),
+        layers.LeakyReLU(alpha=0.2),
         layers.Conv2D(1, (1, 3)),
         layers.LeakyReLU(alpha=0.2),
         layers.Flatten(),
@@ -222,13 +222,14 @@ if __name__=='__main__':
                 d_loss_fn=DiscriminatorWassersteinLoss()
     )
     time = np.linspace(start_point, end_point, num=vector_size)
-    spectrogram_wgan.set_train_epochs(5, 1)
+    spectrogram_wgan.set_train_epochs(4, 1)
     spectrogram_wgan.fit(spectrogram_dataset, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
     plt.pcolormesh(spectrogram_scipy[0])
     plt.show()
     plt.pcolormesh(generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0])
     plt.savefig('synthetic_spectrogram_512_epocs')
     plt.show()
+    exit()
     synthetic_spectrograms = np.array([generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0] for _ in range(int(data_size))])
     benign_data = np.array(benign_data)
     # print("Length of benign: {} length of synthetic: {}".format(len(benign_data[0]), len(synthetic_spectrograms[0])))
