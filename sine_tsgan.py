@@ -9,13 +9,8 @@ from matplotlib import pyplot as plt
 from tensorflow.keras import layers
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.layers import LeakyReLU, Dense, BatchNormalization, GlobalAveragePooling1D, GlobalMaxPool1D
-from tensorflow.python.keras.layers.convolutional import Conv1D
-from tensorflow.python.keras.layers.core import Flatten
-from tensorflow.python.ops.gen_array_ops import Reshape
-# from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
-# from tensorflow.python.keras.layers.core import Dense
-# from tensorflow.python.keras.layers.normalization_v2 import BatchNormalization
-# from tensorflow.python.keras.layers.pooling import GlobalAveragePooling1D, GlobalMaxPool1D
+from tensorflow.keras.layers import Conv1D, Flatten, Reshape
+from tensorflow.keras import mixed_precision
 from keras_model_functions import plot_recurrence
 
 from custom_losses import (DiscriminatorWassersteinLoss,
@@ -29,9 +24,9 @@ import matplotlib.pyplot as plt
 if __name__=='__main__':
     vector_size = 100
     start_point, end_point = 0, 2
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 128, int(1e3), 8, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 32, int(1e4), 12, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
-    early_stop = EarlyStopping(monitor='g_loss', mode='min', verbose=1, patience=3)
+    early_stop = EarlyStopping(monitor='d_loss', mode='min', verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     callback_list = [checkpoint] # [early_stop, checkpoint]
     benign_data, labels = [], []
@@ -76,15 +71,25 @@ if __name__=='__main__':
     image_shape, flattened_image_shape = (51, 1), (51,)
     discriminator_1 = keras.Sequential([
         layers.Reshape((1,)+image_shape, input_shape=image_shape),
-        layers.Conv2D(64, (1, 5), strides=(1, 1)),
+        # 5 kernel or 2 3 kernels stacked
+        # layers.Conv2D(16, (1, 5), strides=(1, 2)),
+        # layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(16, (1, 3), strides=(1, 1)),
+        # layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(16, (1, 3), strides=(1, 2)),
+        layers.LeakyReLU(alpha=0.2),
+        # end of choice
+        layers.Conv2D(32, (1, 3), strides=(1, 1)),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(64, (1, 3), strides=(1, 1)),
         layers.LeakyReLU(alpha=0.2),
         layers.Conv2D(128, (1, 3), strides=(1, 1)),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(256, (1, 3), strides=(1, 1)),
         layers.LeakyReLU(alpha=0.2),
         layers.Conv2D(1, (1, 3)),
         layers.LeakyReLU(alpha=0.2),
         layers.Flatten(),
+        layers.Dense(64),
+        layers.LeakyReLU(alpha=0.2),
         layers.Dense(32),
         layers.LeakyReLU(alpha=0.2),
         layers.Dense(1)
@@ -206,8 +211,8 @@ if __name__=='__main__':
     print(generator_1.output_shape)
     print(generator_2.output_shape)
     spectrogram_wgan = WGAN(discriminator=discriminator_1, generator=generator_1, latent_dim=latent_dimension)
-    spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
-                g_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
+    spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.00006),
+                g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
                 # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
                 # d_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True)
                 g_loss_fn=GeneratorWassersteinLoss(),
@@ -227,7 +232,7 @@ if __name__=='__main__':
     plt.pcolormesh(spectrogram_scipy[0])
     plt.show()
     plt.pcolormesh(generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0])
-    plt.savefig('synthetic_spectrogram_512_epocs')
+    # plt.savefig('synthetic_spectrogram_512_epocs')
     plt.show()
     exit()
     synthetic_spectrograms = np.array([generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0] for _ in range(int(data_size))])
