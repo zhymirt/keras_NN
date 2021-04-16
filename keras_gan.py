@@ -1,17 +1,21 @@
 """ GAN Class taken from https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit"""
 import math
-from random import randint, random
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
+from random import randint, random
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.keras.layers import Dense
-from tensorflow.python.keras.layers.core import Reshape
 from tensorflow.keras.constraints import min_max_norm
-from custom_losses import (DiscriminatorWassersteinLoss, GeneratorWassersteinLoss, wasserstein_loss_fn)
+from tensorflow.keras.layers import Dense, Reshape
+
+from custom_losses import (DiscriminatorWassersteinLoss,
+                           GeneratorWassersteinLoss, wasserstein_loss_fn,
+                           wasserstein_metric_fn)
 from keras_data import plot_data
+
 
 def generate_sine(start, end, points, amplitude=1, frequency=1):
     time = np.linspace(0, 2, 100)
@@ -108,8 +112,9 @@ class WGAN(GAN):
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
 
-        avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        return {'d_loss': d_loss, 'g_loss': g_loss}   
+        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
+        # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
+        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(self.generator(random_latent_vectors)))}   
 
 class cWGAN(WGAN):
     def train_step(self, data):
@@ -142,8 +147,10 @@ class cWGAN(WGAN):
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
 
-        avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        return {'d_loss': d_loss, 'g_loss': g_loss}   
+        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
+        # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
+        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(self.generator(random_latent_vectors)))}   
+        # return {'d_loss': d_loss, 'g_loss': g_loss}
 
 # class TSGAN(GAN):
 #     pass
