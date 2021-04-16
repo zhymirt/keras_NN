@@ -18,6 +18,9 @@ def gen_wasserstein_loss_fn(y_true, y_pred):
 def wasserstein_loss_fn(y_true, y_pred):
     return tf.reduce_mean(y_true * y_pred)
 
+def wasserstein_metric_fn(y_true, y_pred):
+    return tf.reduce_mean(y_pred)
+
 class DiscriminatorWassersteinLoss(keras.losses.Loss):
     def call(self, y_true, y_pred):
         return wasserstein_loss_fn(y_true, y_pred)
