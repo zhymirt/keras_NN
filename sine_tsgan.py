@@ -22,6 +22,9 @@ from scipy import signal
 import matplotlib.pyplot as plt
 
 if __name__=='__main__':
+    # Equivalent to the two lines above from tensorflow
+    # mixed_precision.set_global_policy('mixed_float16')
+
     vector_size = 100
     start_point, end_point = 0, 2
     latent_dimension, epochs, data_size, batch_size, data_type = 256, 32, int(1e4), 12, 'float32'
@@ -92,7 +95,7 @@ if __name__=='__main__':
         layers.LeakyReLU(alpha=0.2),
         layers.Dense(32),
         layers.LeakyReLU(alpha=0.2),
-        layers.Dense(1)
+        layers.Dense(1, dtype=data_type)
     ], name='discriminator_1')
 
     discriminator_2_spec_input = layers.Input(shape=image_shape)
@@ -146,7 +149,7 @@ if __name__=='__main__':
         layers.LeakyReLU(alpha=0.2),
         # layers.Conv2D(1, 3),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Reshape(image_shape),
+        layers.Reshape(image_shape, dtype=data_type),
     ], name='generator_1')
 
     generator_2_spec_input = layers.Input(shape=image_shape)

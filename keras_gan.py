@@ -97,7 +97,7 @@ class WGAN(GAN):
             with tf.GradientTape() as tape:
                 # d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
                 d_loss = self.d_loss_fn(tf.concat((real_labels, fakes_labels), 0), tf.concat((self.discriminator(real_images), self.discriminator(generated)), 0))
-                r = tf.random.uniform(shape=[1], dtype=data_type)
+                r = tf.random.uniform(shape=[1])
                 x_hat = r*real_images + (1 - r)*generated
                 val = lamb*((abs(tf.reduce_mean(x_hat) - tf.reduce_mean(self.discriminator(x_hat))))**2)
                 d_loss += val
