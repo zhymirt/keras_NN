@@ -40,6 +40,10 @@ def plot_recurrence(x_values, y_values, rp, single_sample=True, show=False, save
         if show:
             plt.show()
 
+def get_recurrence(x_values, y_values, rp, single_sample=True):
+    x_rp = rp.fit_transform(y_values.reshape(1, -1) if single_sample else y_values.reshape(-1, 1))
+    x_rec = x_rp[0]
+    return x_rec
 
 if __name__ == '__main__':
     X, _, _, _ = load_gunpoint(return_X_y=True)
