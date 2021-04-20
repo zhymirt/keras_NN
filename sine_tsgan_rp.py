@@ -244,4 +244,4 @@ if __name__=='__main__':
     sine_wave_wgan.fit((benign_data, synthetic_spectrograms), epochs=epochs, batch_size=batch_size, callbacks=callback_list)
     trend = generate_sine(start_point, end_point, vector_size)
     generate_conditional_image_summary(generator_2, generator_1.predict(tf.random.normal(shape=(1, latent_dimension))),
-             latent_dimension, time, 3, True, trend, show=True, save=True, save_dir='./results', save_desc='4_9_21_tsgan_512_epochs')
+             latent_dimension, time, 3, True, trend, show=True, save=False, save_dir='./results', save_desc='4_9_21_tsgan_512_epochs')
