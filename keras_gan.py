@@ -149,7 +149,7 @@ class cWGAN(WGAN):
 
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
         # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(self.generator(random_latent_vectors)))}   
+        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(1, self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels)))}   
         # return {'d_loss': d_loss, 'g_loss': g_loss}
 
 # class TSGAN(GAN):
