@@ -184,7 +184,7 @@ if __name__=='__main__':
     # mixed_precision.set_global_policy('mixed_float16')
 
     start_point, end_point, vector_size = 0, 2, 100
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 512, int(1e4), 8, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 4, int(5e4), 8, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
     early_stop = EarlyStopping(monitor='d_loss', mode='min', verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
