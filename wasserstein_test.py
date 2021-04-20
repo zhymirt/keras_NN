@@ -4,7 +4,7 @@ import numpy as np
 # import keras_NN.keras_gan
 from keras_gan import discrim_wasserstein_loss_fn
 
-class WassersteinTest(unittest.TestCase):
+class WassersteinTest(TestCase):
 
     # def test_Fail(self):
     #     self.assertEqual(False, True)

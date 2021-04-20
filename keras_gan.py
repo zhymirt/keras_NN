@@ -8,7 +8,6 @@ import tensorflow as tf
 from random import randint, random
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.keras.constraints import min_max_norm
 from tensorflow.keras.layers import Dense, Reshape
 
 from custom_losses import (DiscriminatorWassersteinLoss,
