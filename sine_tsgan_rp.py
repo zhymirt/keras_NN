@@ -23,12 +23,12 @@ if __name__=='__main__':
     # mixed_precision.set_global_policy('mixed_float16')
 
     start_point, end_point, vector_size = 0, 2, 100
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 64, int(1e3), 8, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 1, int(1e2), 8, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
     early_stop = EarlyStopping(monitor='d_loss', mode='min', verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
-    callback_list = [checkpoint, tb] # [early_stop, checkpoint, tb]
+    callback_list = [checkpoint] # [early_stop, checkpoint, tb]
     benign_data, labels = [], []
     for _ in range(int(data_size)):
         frequency = 1 # randint(1, 3)
@@ -66,7 +66,7 @@ if __name__=='__main__':
     rec_plot_dataset = data_to_dataset(rec_plots, dtype=data_type, batch_size=batch_size)
     dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
     # exit()
-    image_shape, flattened_image_shape = (100, 100), (int(1e4),)
+    image_shape, flattened_image_shape = (100, 100,), (int(1e4),)
     discriminator_1 = keras.Sequential([
         layers.Reshape(image_shape+(1,), input_shape=image_shape),
         # 5 kernel or 2 3 kernels stacked
@@ -236,7 +236,7 @@ if __name__=='__main__':
     plt.pcolormesh(generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
     # plt.savefig('4_16_21_synthetic_spectrogram_1')
     plt.show()
-    exit()
+    # exit()
     synthetic_spectrograms = np.array([generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0] for _ in range(int(data_size))])
     benign_data = np.array(benign_data)
     # print("Length of benign: {} length of synthetic: {}".format(len(benign_data[0]), len(synthetic_spectrograms[0])))
