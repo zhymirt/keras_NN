@@ -23,18 +23,19 @@ if __name__=='__main__':
     # mixed_precision.set_global_policy('mixed_float16')
 
     start_point, end_point, vector_size = 0, 2, 100
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 2, int(1e5), 128, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 64, int(1e3), 8, 'float32'
     save_desc = '_{}{}{}{}{}{}{}{}{}{}'.format('latent_dimension_', latent_dimension, '_epochs_', epochs, '_data_size_', data_size, '_batch_size_', batch_size, '_type_', 'cnn_fc')
     early_stop = EarlyStopping(monitor='d_loss', mode='min', verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
-    callback_list = [checkpoint] # [early_stop, checkpoint]
+    tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
+    callback_list = [checkpoint, tb] # [early_stop, checkpoint, tb]
     benign_data, labels = [], []
     for _ in range(int(data_size)):
         frequency = 1 # randint(1, 3)
         benign_data.append(generate_sine(start_point, end_point, vector_size, frequency=frequency))
         labels.append([frequency])
     # benign_data = [generate_sine(start_point, end_point, vector_size, frequency=1) for _ in range(int(data_size))] # generate 100 points of sine wave
-    time, rp = np.linspace(start_point, end_point, vector_size), RecurrencePlot(time_delay=((end_point-start_point)/vector_size))
+    time, rp = np.linspace(start_point, end_point, vector_size), RecurrencePlot(time_delay=((end_point-start_point)/vector_size), threshold=None, percentage=50)
     rec_plots = list(map(lambda x: get_recurrence(time, x, rp), benign_data))
     # plt.pcolormesh()
     # plt.close()
@@ -71,27 +72,33 @@ if __name__=='__main__':
         # 5 kernel or 2 3 kernels stacked
         # layers.Conv2D(16, (1, 5), strides=(1, 2)),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(16, 3, strides=1),
+        layers.Conv2D(8, 3, strides=1, padding='same'),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(16, 3, strides=2),
+        layers.Conv2D(8, 3, strides=2, padding='same'),
         layers.LeakyReLU(alpha=0.2),
         # end of choice
-        layers.Conv2D(32, 3, strides=1),
+        layers.Conv2D(16, 3, strides=1, padding='valid'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, 3, strides=2),
+        layers.Conv2D(16, 3, strides=2, padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, 3, strides=2),
+        layers.Conv2D(64, 3, strides=2, padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(128, 3, strides=1),
+        layers.Conv2D(64, 3, strides=1, padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(128, 3, strides=1),
+        layers.Conv2D(64, 3, strides=1, padding='same'),
         layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(64, 3, strides=1, padding='same'),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Conv2D(64, 3, strides=2, padding='same'),
+        layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2D(64, 3, strides=1, padding='valid'),
+        # layers.LeakyReLU(alpha=0.2),
         layers.Conv2D(1, 3),
         layers.LeakyReLU(alpha=0.2),
         layers.Flatten(),
-        layers.Dense(64),
-        layers.LeakyReLU(alpha=0.2),
         layers.Dense(32),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Dense(16),
         layers.LeakyReLU(alpha=0.2),
         layers.Dense(1, dtype=data_type)
     ], name='discriminator_1')
@@ -128,30 +135,30 @@ if __name__=='__main__':
     generator_1 = keras.Sequential([
         layers.Dense(64, input_shape=(latent_dimension,)),
         layers.LeakyReLU(alpha=0.2),
-        layers.Dense(32),
+        # layers.Dense(32),
+        # layers.LeakyReLU(alpha=0.2),
+        layers.Dense(6**2),
         layers.LeakyReLU(alpha=0.2),
-        layers.Dense(3**2),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Reshape((3, 3, 1,)),
+        layers.Reshape((6,)*2+(1,)),
         # layers.Conv2DTranspose(32, 3, strides=2),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
         # layers.Conv2DTranspose(32, 3, strides=2),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv2DTranspose(32, 3, strides=2, padding='same'),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2DTranspose(32, 3, strides=2, padding='same'),
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
         layers.Conv2DTranspose(32, 3, strides=2, padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
         # layers.Conv2DTranspose(32, 3, strides=2, padding='same'),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv2DTranspose(32, 3, strides=2),
+        layers.Conv2DTranspose(64, 3, strides=2),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2DTranspose(32, 3, strides=2, padding='same'),
+        layers.Conv2DTranspose(128, 3, strides=2, padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
         layers.Conv2DTranspose(1, 3, strides=2, padding='same'),
@@ -224,10 +231,10 @@ if __name__=='__main__':
     plt.imshow(rec_plots[0], cmap='binary')
     plt.show()
     plt.imshow(generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
-    plt.savefig('4_16_21_synthetic_spectrogram')
+    # plt.savefig('4_16_21_synthetic_spectrogram')
     plt.show()
     plt.pcolormesh(generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
-    plt.savefig('4_16_21_synthetic_spectrogram_1')
+    # plt.savefig('4_16_21_synthetic_spectrogram_1')
     plt.show()
     exit()
     synthetic_spectrograms = np.array([generator_1.predict(tf.random.normal(shape=(1, latent_dimension)))[0] for _ in range(int(data_size))])
