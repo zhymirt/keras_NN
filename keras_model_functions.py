@@ -21,7 +21,7 @@ from pyts.image import RecurrencePlot
 # from pyts.datasets import load_gunpoint
 
 
-def plot_recurrence(x_values, y_values, rp, single_sample=True, show=False, save=False, save_name=''):
+def plot_recurrence(y_values, rp, single_sample=True, show=False, save=False, save_name=''):
     x_rp = rp.fit_transform(y_values.reshape(1, -1) if single_sample else y_values.reshape(-1, 1))
     x_rec = x_rp[0]
     if show:
@@ -35,10 +35,12 @@ def plot_recurrence(x_values, y_values, rp, single_sample=True, show=False, save
         if show:
             plt.show()
 
-def get_recurrence(x_values, y_values, rp, single_sample=True):
+def get_recurrence(y_values, rp, single_sample=True):
     x_rp = rp.fit_transform(y_values.reshape(1, -1) if single_sample else y_values.reshape(-1, 1))
     x_rec = x_rp[0]
     return x_rec
+def get_recurrence_diff(y_1, y_2):
+    return y_1 - y_2
 
 if __name__ == '__main__':
     # X, _, _, _ = load_gunpoint(return_X_y=True)
@@ -60,4 +62,4 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    plot_recurrence(xx, yy, rp, single_sample=True, show=True, save=False)
+    plot_recurrence(yy, rp, single_sample=True, show=True, save=False)
