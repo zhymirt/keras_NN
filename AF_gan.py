@@ -74,18 +74,40 @@ def plot_data(x_values, list_y_values, show=False, save=True, save_path=''):
         plt.close()
 
 
+def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], amplitudes=[1], h_offsets=[0],
+                                   v_offsets=[0]):
+    # should be done in parallel to improve performance
+    r_amplitudes = np.random.choice(amplitudes, size=num_signals)
+    r_frequencies = np.random.choice(frequencies, size=num_signals)
+    r_h_offsets = np.random.choice(h_offsets, size=num_signals)
+    r_v_offsets = np.random.choice(v_offsets, size=num_signals)
+    # end of parallel run
+    signals = [(amplitude * np.sin(2 * np.pi * frequency * (time_frame + h_offset))) + v_offset for amplitude, frequency,
+                                                                                              h_offset, v_offset in zip(
+                                                                r_amplitudes, r_frequencies, r_h_offsets, r_v_offsets)]
+    # signal = amplitude * np.sin(2 * np.pi * frequency * time)
+    return signals
+
+
 if __name__ == '__main__':
     data_type, batch_size = 'float32', 1
     # print(os.getcwd())
     # exit()
-    time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [ read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
-        'T04repeat.txt', 'T05.txt', 'T06.txt', 'T07.txt', 'T08.txt']]
+    time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [
+        read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
+                                                                                  'T04repeat.txt', 'T05.txt', 'T06.txt',
+                                                                                  'T07.txt', 'T08.txt']]
     benign_data = np.array(benign_data)
     # time, benign_data = np.load('../signal_data/time_np.npy'), np.concatenate(
     #     [[np.load(os.path.join('../signal_data', name + '_np.npy'))] for name in ['T04',
     #                                                                               'T04repeat', 'T05', 'T06', 'T07',
     #                                                                               'T08']])
     print(benign_data.shape)
+    init_training = generate_generic_training_data(time, num_signals=100*5, frequencies=range(1, 11),
+                                                   amplitudes=range(1, 1001), h_offsets=[0.01 * n for n in range(0, 100)])
+    init_training = np.reshape(init_training, (-1, 5501, 5))
+    print(init_training.shape)
+    generic_dataset = data_to_dataset(init_training, dtype=data_type, batch_size=batch_size)
     # benign_data_transposed = np.concatenate([ [np.transpose(np.load(os.path.join('../signal_data', name+'_np.npy')))] for name in ['T04',
     #     'T04repeat', 'T05', 'T06', 'T07', 'T08']])
     benign_data_transposed = np.transpose(benign_data, (0, 2, 1))  # [:][:][0]
@@ -103,34 +125,34 @@ if __name__ == '__main__':
     #     for jdx in range(benign_data_transposed.shape[1]):
     #         _, _, spec = signal.spectrogram(benign_data_transposed[idx][jdx][:], fs=fs)
     #         spectrogram_scipy.append(spec)
-    spectrogram_scipy = list(
-        map(lambda x: signal.spectrogram(x, fs=data_size / (time[-1] - time[0]))[2], benign_data_transposed))
-    spectrogram_dataset = data_to_dataset(spectrogram_scipy, dtype=data_type, batch_size=batch_size)
-    # print(benign_data_transposed[0].shape)
+    # spectrogram_scipy = list(
+    #     map(lambda x: signal.spectrogram(x, fs=data_size / (time[-1] - time[0]))[2], benign_data_transposed))
+    # spectrogram_dataset = data_to_dataset(spectrogram_scipy, dtype=data_type, batch_size=batch_size)
+    # # print(benign_data_transposed[0].shape)
+    # # print(spectrogram_scipy[0].shape)
+    # # plt.pcolormesh(spectrogram_scipy[1])
+    # # plt.show()
+    # # exit()
+    # spectrogram_discriminator = make_AF_spectrogram_discriminator_1()
+    # spectrogram_generator = make_AF_spectrogram_generator_1(latent_dimension)
+    # spectrogram_wgan = WGAN(discriminator=spectrogram_discriminator, generator=spectrogram_generator,
+    #                         latent_dim=latent_dimension)
+    # spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
+    #                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0006)
+    #                          )
+    # spectrogram_wgan.set_train_epochs(4, 1)
     # print(spectrogram_scipy[0].shape)
-    # plt.pcolormesh(spectrogram_scipy[1])
+    # print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
+    # spectrogram_wgan.fit(spectrogram_dataset, batch_size=None, epochs=1024)
+    # print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
     # plt.show()
-    # exit()
-    spectrogram_discriminator = make_AF_spectrogram_discriminator_1()
-    spectrogram_generator = make_AF_spectrogram_generator_1(latent_dimension)
-    spectrogram_wgan = WGAN(discriminator=spectrogram_discriminator, generator=spectrogram_generator,
-                            latent_dim=latent_dimension)
-    spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
-                             g_optimizer=keras.optimizers.Adam(learning_rate=0.0006)
-                             )
-    spectrogram_wgan.set_train_epochs(4, 1)
-    print(spectrogram_scipy[0].shape)
-    print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
-    spectrogram_wgan.fit(spectrogram_dataset, batch_size=None, epochs=1024)
-    print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
-    plt.show()
-    rp = RecurrencePlot()
-    plot_recurrence(spectrogram_scipy[2], rp, show=True)
-    plot_recurrence(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension))), rp, show=True)
-    plt.pcolormesh(spectrogram_scipy[2], cmap='binary')
-    plt.show()
-    plt.pcolormesh(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
-    plt.show()
+    # rp = RecurrencePlot()
+    # plot_recurrence(spectrogram_scipy[2], rp, show=True)
+    # plot_recurrence(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension))), rp, show=True)
+    # plt.pcolormesh(spectrogram_scipy[2], cmap='binary')
+    # plt.show()
+    # plt.pcolormesh(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
+    # plt.show()
     # exit()
     dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
     # create discriminator and generator
@@ -145,6 +167,7 @@ if __name__ == '__main__':
                  )
     # exit()
     wgan.set_train_epochs(4, 1)
+    wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
     wgan.fit(dataset, epochs=1024, batch_size=batch_size)
     # generator.save('af_generator.h5')
     # discriminator.save('af_discriminator.h5')
@@ -156,7 +179,7 @@ if __name__ == '__main__':
     plt.show()
     plt.imshow(synth)
     plt.show()
-    plt.imshow(orig-synth)
+    plt.imshow(orig - synth)
     plt.show()
     prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0]
     plot_data(time, np.transpose(np.array(prediction), (1, 0)), show=True, save=False,
