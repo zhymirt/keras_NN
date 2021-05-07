@@ -75,7 +75,7 @@ def plot_data(x_values, list_y_values, show=False, save=True, save_path=''):
 
 
 if __name__ == '__main__':
-    data_type, batch_size = 'float32', 1
+    data_type, batch_size = 'float32', 6
     # print(os.getcwd())
     # exit()
     # time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [ read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
@@ -84,6 +84,8 @@ if __name__ == '__main__':
         [[np.load(os.path.join('../signal_data', name + '_np.npy'))] for name in ['T04',
                                                                                   'T04repeat', 'T05', 'T06', 'T07',
                                                                                   'T08']])
+    print(benign_data.shape)
+    benign_data = benign_data.repeat(1e3, axis=0)
     print(benign_data.shape)
     # benign_data_transposed = np.concatenate([ [np.transpose(np.load(os.path.join('../signal_data', name+'_np.npy')))] for name in ['T04',
     #     'T04repeat', 'T05', 'T06', 'T07', 'T08']])
@@ -144,7 +146,7 @@ if __name__ == '__main__':
                  )
     # exit()
     wgan.set_train_epochs(4, 1)
-    wgan.fit(dataset, epochs=1024, batch_size=batch_size)
+    wgan.fit(dataset, epochs=16, batch_size=128)
     # generator.save('af_generator.h5')
     # discriminator.save('af_discriminator.h5')
     # time = np.array(signals[0]['time'])
