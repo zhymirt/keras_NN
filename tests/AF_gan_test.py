@@ -53,7 +53,7 @@ class AFGANTest(TestCase):
     def test_af_spectrogram_generator_succeeds(self):
         model = make_AF_spectrogram_generator_1(256, summary=True)
         self.assertTrue(bool(model))
-        self.assertEqual(model.output_shape, (None, 129, 24))
+        self.assertEqual(model.output_shape, (None, 5, 129, 24))
 
 
 if __name__ == '__main__':

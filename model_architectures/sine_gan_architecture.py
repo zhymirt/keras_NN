@@ -60,11 +60,11 @@ def make_sine_gan_fcc_generator(latent_dimension, vector_size, summary=False, da
 def make_sine_gan_cnn_discriminator(vector_size, summary=False, data_type='float32'):
     model = keras.Sequential([
         layers.Reshape((vector_size, 1,), input_shape=(vector_size,), dtype=data_type),
-        layers.Conv1D(16, 5, strides=5, padding='same'),
+        layers.Conv1D(64, 5, strides=5, padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(16, 5, strides=5, padding='same'),
+        layers.Conv1D(32, 5, strides=5, padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 3, strides=3, padding='same'),
+        layers.Conv1D(64, 3, strides=3, padding='same'),
         layers.LeakyReLU(alpha=0.2),
         layers.Conv1D(32, 3, strides=2, padding='same'),
         layers.LeakyReLU(alpha=0.2),
@@ -74,8 +74,8 @@ def make_sine_gan_cnn_discriminator(vector_size, summary=False, data_type='float
         layers.LeakyReLU(alpha=0.2),
         layers.Conv1D(64, 3, strides=2, padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(64, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
+        # layers.Conv1D(64, 3, strides=2, padding='same'),
+        # layers.LeakyReLU(alpha=0.2),
         layers.Conv1D(256, 3, strides=1, padding='valid'),
         layers.LeakyReLU(alpha=0.2),
         # layers.GlobalAveragePooling1D(),
@@ -97,13 +97,13 @@ def make_sine_gan_cnn_discriminator(vector_size, summary=False, data_type='float
 
 
 def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='float32'):
-    mini_data, channels = 3, 64
+    mini_data, channels = 12, 64
     flattened = mini_data * channels
     model = keras.Sequential([
         # layers.UpSampling1D(),
         layers.Dense(flattened, input_shape=(latent_dimension,)),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
         # layers.Dense(32),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
@@ -111,15 +111,15 @@ def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='floa
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
         layers.Reshape((mini_data, channels)),
-        layers.Conv1DTranspose(64, 3, strides=1, padding='same'),
+        layers.Conv1DTranspose(32, 3, strides=1, padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
-        layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        # layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
+        # layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
         layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
@@ -129,18 +129,18 @@ def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='floa
         # layers.Conv1DTranspose(16, 3, strides=3, padding='valid'),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv1DTranspose(16, 5, strides=5, padding='same'),
+        layers.Conv1DTranspose(32, 5, strides=5, padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
         # layers.Conv1DTranspose(8, 3, strides=1, padding='same'),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv1DTranspose(16, 5, strides=5, padding='same', activation=cos),
+        layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos),
         layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
         layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type),  # get signal stand
         layers.BatchNormalization(),
-        layers.Conv1DTranspose(1, 1, strides=1, padding='same', dtype=data_type),  # choose amplitude
+        # layers.Conv1DTranspose(1, 1, strides=1, padding='same', dtype=data_type),  # choose amplitude
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
         # layers.Conv1DTranspose(1, 5, strides=1, padding='same'),

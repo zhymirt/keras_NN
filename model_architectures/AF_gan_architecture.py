@@ -347,39 +347,41 @@ def make_conditional_generator(summary=False):
     pass
 
 
-image_shape, flattened_image_shape = (129, 24,), (3096,)
+image_shape, flattened_image_shape = (5, 129, 24,), (3096,)
 def make_AF_spectrogram_discriminator_1(data_type='float32', summary=False):
     model = keras.Sequential([
-        layers.Reshape(image_shape+(1,), input_shape=image_shape),
-        # 5 kernel or 2 3 kernels stacked
-        # layers.Conv2D(16, (1, 5), strides=(1, 2)),
+        layers.Reshape(reversed(image_shape), input_shape=image_shape),
+        # # 5 kernel or 2 3 kernels stacked
+        # # layers.Conv2D(16, (1, 5), strides=(1, 2)),
+        # # layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'),
+        # # layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2D(16, (3, 3), strides=(2, 2), padding='same'),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'),
-        # layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(16, (3, 3), strides=(2, 2), padding='same'),
+        # # end of choice
+        layers.Conv2D(64, (1, 3), strides=(1, 3), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        # end of choice
+        layers.Conv2D(64, (1, 3), strides=(1, 3), padding='same'),
+        layers.LeakyReLU(alpha=0.2),
         layers.Conv2D(64, (1, 3), strides=(1, 2), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, (3, 1), strides=(1, 1), padding='valid'),
+        layers.Conv2D(64, (1, 3), strides=(1, 2), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, (3, 1), strides=(1, 1), padding='valid'),
+        layers.Conv2D(64, (1, 3), strides=(1, 2), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, (3, 1), strides=(1, 1), padding='valid'),
+        layers.Conv2D(64, (3, 1), strides=(3, 1), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, (3, 1), strides=(1, 1), padding='valid'),
+        layers.Conv2D(64, (3, 1), strides=(2, 1), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, (3, 1), strides=(1, 1), padding='valid'),
+        layers.Conv2D(64, (3, 1), strides=(2, 1), padding='same'),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(64, (3, 3), strides=(1, 1), padding='valid'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv2D(1, (3, 3)),
-        layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2D(1, (3, 1)),
+        # layers.LeakyReLU(alpha=0.2),
         layers.Flatten(),
-        layers.Dense(32),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Dense(16),
-        layers.LeakyReLU(alpha=0.2),
+        # layers.Dense(32),
+        # layers.LeakyReLU(alpha=0.2),
+        # layers.Dense(16),
+        # layers.LeakyReLU(alpha=0.2),
         layers.Dense(1, dtype=data_type)
     ], name='discriminator_1')
     if summary:
@@ -388,7 +390,7 @@ def make_AF_spectrogram_discriminator_1(data_type='float32', summary=False):
 
 
 def make_AF_spectrogram_generator_1(latent_dimension, data_type='float32', summary=False):
-    mini_data, channels = (3, 8), 16
+    mini_data, channels = (3, 3), 16
     flattened = mini_data[0] * mini_data[1] * channels
     model = keras.Sequential([
         layers.Dense(flattened, input_shape=(latent_dimension,)),
@@ -397,19 +399,42 @@ def make_AF_spectrogram_generator_1(latent_dimension, data_type='float32', summa
         # layers.LeakyReLU(alpha=0.2),
         # layers.Dense(24),
         # layers.LeakyReLU(alpha=0.2),
-        layers.Reshape((3, 8, channels)),
-        layers.Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same'),
+        layers.Reshape((mini_data[0], mini_data[1], channels)),
+        # Scale up 24
+        layers.Conv2DTranspose(32, (3, 1), strides=(2, 1), padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same'),
+        layers.Conv2DTranspose(64, (3, 1), strides=(2, 1), padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same', activation=cos),
+        layers.Conv2DTranspose(64, (3, 1), strides=(2, 1), padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
-        layers.Conv2DTranspose(1, (1, 3), strides=(1, 2), activation='tanh'),
+        # Scale up 129
+        layers.Conv2DTranspose(64, (1, 3), strides=(1, 2), padding='valid'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
+        layers.Conv2DTranspose(64, (1, 3), strides=(1, 3), padding='same'),
+        layers.BatchNormalization(),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Conv2DTranspose(64, (1, 3), strides=(1, 2), padding='valid'),
+        layers.BatchNormalization(),
+        layers.LeakyReLU(alpha=0.2),
+        layers.Conv2DTranspose(5, (1, 3), strides=(1, 3), padding='same'),
+        layers.BatchNormalization(),
+        layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same'),
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same'),
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2DTranspose(32, (3, 3), strides=(2, 2), padding='same'),  # , activation=cos
+        # layers.BatchNormalization(),
+        # # layers.LeakyReLU(alpha=0.2),
+        # layers.Conv2DTranspose(1, (1, 3), strides=(1, 2)),  # , activation='tanh'
+        # layers.BatchNormalization(),
+        # layers.LeakyReLU(alpha=0.2),
         # layers.Conv2D(1, (1, 3)),
         # layers.LeakyReLU(alpha=0.2),
         layers.Reshape(image_shape, dtype=data_type),
