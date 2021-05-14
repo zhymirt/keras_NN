@@ -6,6 +6,7 @@ from statistics import mean  # , pstdev
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
+import sklearn.preprocessing as preprocessing
 from matplotlib import pyplot as plt
 from tensorflow.keras import layers
 from tensorflow.keras.layers import (BatchNormalization, Dense,
@@ -95,7 +96,7 @@ if __name__ == '__main__':
     #     session = InteractiveSession(config=config)
     start_point, end_point, vector_size = 0, 2, 6000
     conditional, discriminator_mode, generator_mode, verbosity = False, 'cnn', 'cnn', 2
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 64, int(1e4), 16, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 16, int(1e4), 16, 'float32'
     save_desc = '__latent_dimension_{}_epochs_{}_data_size_{}_batch_size_{}_type_cnn_cnn'.format(latent_dimension,
                                                                                                  epochs, data_size,
                                                                                                  batch_size)
@@ -103,10 +104,13 @@ if __name__ == '__main__':
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
     callback_list = [checkpoint, tb]  # [early_stop, checkpoint]
-    benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=randint(1, 2), frequency=randint(1, 3)) for _ in
+    benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=randint(1e4, 1e4), frequency=randint(1, 2)) for _ in
                    range(int(data_size))]  # generate 100 points of sine wave
     # for idx in range(2):
     #     plot_sine(benign_data[idx], show=True)
+    # scaler = preprocessing.MinMaxScaler().fit(benign_data)
+    # transformed = scaler.transform(benign_data)
+    # dataset = data_to_dataset(transformed, dtype=data_type, batch_size=batch_size, shuffle=True)
     dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
     # create discriminator and generator
     if conditional:
@@ -183,14 +187,14 @@ if __name__ == '__main__':
         from pyts.image import RecurrencePlot
 
         rp, trend = RecurrencePlot(), generate_sine(start_point, end_point, vector_size,
-                                                    amplitude=1, frequency=1)
+                                                    amplitude=int(1), frequency=1)
         plot_recurrence(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], rp, show=True, save=False,
                         save_name='5_7_21_sine_gan_freq_1-3_recurrence')
         generate_image_summary(generator=generator, time=time, latent_dim_size=latent_dimension, num_rand_images=3,
                                show=True, save=False,
                                save_dir='./results', save_desc='5_7_21_freq_1-3_' + save_desc, plot_trend=True, trend_signal=trend)
-        # plot_sine(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0], show=True, save=False, save_path='./results/sine_zeros' + save_desc)
-        # plot_sine(standardize(generator.predict(tf.zeros(shape=(1, latent_dimension)))[0]), show=True, save=False)
+        # plot_sine(scaler.inverse_transform(generator.predict(tf.zeros(shape=(1, latent_dimension))))[0], time, show=True, save=False, save_path='./results/sine_zeros' + save_desc)
+        # # plot_sine(standardize(generator.predict(tf.zeros(shape=(1, latent_dimension))))[0], time, show=True, save=False)
         # for idx in range(3):
-        #     plot_sine(generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], show=True, save=False, save_path='./results/sine_norm' + save_desc + '_' + str(idx))
-        # plot_sine(generator.predict(tf.ones(shape=(1, latent_dimension)))[0], show=True, save=False, save_path='./results/sine_ones' + save_desc)
+        #     plot_sine(scaler.inverse_transform(generator.predict(tf.random.normal(shape=(1, latent_dimension))))[0], time, show=True, save=False, save_path='./results/sine_norm' + save_desc + '_' + str(idx))
+        # plot_sine(scaler.inverse_transform(generator.predict(tf.ones(shape=(1, latent_dimension))))[0], time, show=True, save=False, save_path='./results/sine_ones' + save_desc)
