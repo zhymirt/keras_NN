@@ -136,33 +136,11 @@ def get_cross_correlate_score(dataset, synth):
     pass
 
 
-def get_fft_score(dataset, synth): # time
-    # N = len(time)
-    # T = (time[-1] - time[0]) / N
-    # dataset, synth = dataset.astype('float64'), synth.astype('float64')
-    # synth_fft, data_fft = list(), list()
-    # fft_fn = lambda x: scipy.fft.fft(x)
-    # synth_fft = np.apply_along_axis(fft_fn, 2, synth) # np_fft
-    # data_fft = np.apply_along_axis(fft_fn, 2, dataset) # dataset_fft
-    synth_fft, data_fft = scipy.fft.fft(synth), scipy.fft.fft(dataset)
+def get_fft_score(dataset, synth):
     # Get ffts
-    # for synth_obj in range(synth.shape[0]):
-    #     ffts = [scipy.fft.fft(synth[synth_obj, feature]) for feature in range(synth.shape[1])]
-    #     synth_fft.append(ffts)
-    # synth_fft = np.array(synth_fft)  # , dtype='float64'
-    # print((np_fft - synth_fft).sum())
-    # for data_obj in range(dataset.shape[0]):
-    #     ffts = [scipy.fft.fft(dataset[data_obj, feature]) for feature in range(dataset.shape[1])]
-    #     data_fft.append(ffts)
-    # data_fft = np.array(data_fft)  # , dtype='float64'
-    # print((dataset_fft - data_fft).sum())
-    # print(synth_fft.shape)
-    # print(data_fft.shape)
+    synth_fft, data_fft = scipy.fft.fft(synth), scipy.fft.fft(dataset)
+    # print('Synth FFT shape: {}, Data FFT Shape: {}'.format(synth_fft.shape, data_ff.shape))
     min_diffs = list()
-    expanded = np.repeat([synth_fft[0]], data_fft.shape[0], 0)
-    # print('Expanded shape: {}'.format(expanded.shape))
-    # min_diff_fn = lambda x: np.subtract(data_fft, np.repeat([x], data_fft.shape[0], axis=0))
-    # np_min_diff = np.apply_along_axis(min_diff_fn, 2, synth_fft)
     for synth_obj in synth_fft:
         min_diff, diff = 1e99, None
         for data_obj in data_fft:
@@ -174,7 +152,7 @@ def get_fft_score(dataset, synth): # time
             diff = np.sum(diff, axis=1)
             # print('Summed shape: {}'.format(diff.shape))
             diff = np.average(np.sqrt(diff))
-            print('Average: {}'.format(diff))
+            # print('Average: {}'.format(diff))
             # diff = np.average(np.square(data_fft[data_obj] - synth_fft))
             # print('Total squared difference: {}, Current minimum: {}'.format(diff, min_diff))
             min_diff = min(min_diff, diff)
@@ -187,31 +165,7 @@ def get_fft_score(dataset, synth): # time
 
 
 def metric_fft_score(dataset, synth):
-    # tf.config.run_functions_eagerly(True)
-    # return get_fft_score(dataset, synth)
-    synth_fft, dataset_fft = tf.signal.fft(tf.cast(synth, tf.complex64)), tf.signal.fft(tf.cast(dataset, tf.complex64))
-    # expanded = np.repeat([synth_fft[0]], data_fft.shape[0], 0)
-    # print('Expanded shape: {}'.format(expanded.shape))
-    # # min_diff_fn = lambda x: np.subtract(data_fft, np.repeat([x], data_fft.shape[0], axis=0))
-    # # np_min_diff = np.apply_along_axis(min_diff_fn, 2, synth_fft)
-    min_diffs = list()
-    for synth_obj in synth_fft:
-        min_diff, diff = 1e99, None
-        for data_obj in dataset_fft:
-            diff = data_obj - synth_obj
-            # print('Difference: {}'.format(diff))
-            diff = np.square(diff)
-            print('Squared: {}'.format((diff < 0.0).any()))
-            diff = np.sum(diff)
-            print('Sum: {}'.format(diff))
-            # diff = np.average(np.square(data_fft[data_obj] - synth_fft))
-            print('Total squared difference: {}, Current minimum: {}'.format(diff, min_diff))
-            min_diff = min(min_diff, diff)
-        min_diffs.append(min_diff)
-    min_diffs = np.sqrt(np.array(min_diffs))
-    # print(min_diffs.shape)
-    print(min_diffs)
-    return np.average(min_diffs)
+    return tf.cast(tf.numpy_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)*1000
 
 def normalize_data(data):
     norm_data = None
@@ -400,19 +354,19 @@ if __name__ == '__main__':
     generator = make_AF_generator(latent_dimension, num_data_types, data_size)
     # generator attempts to produce even numbers, discriminator will tell if true or not
     wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
-    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
-                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0002)
+    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0009)
                  )
     # exit()
     wgan.set_train_epochs(4, 1)
     # # prefit with generic data for few shot learning
     # wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
     # # Train model with real data
-    wgan.fit(dataset, epochs=1, batch_size=batch_size)
+    wgan.fit(dataset, epochs=2, batch_size=batch_size)
 
     # Saving models
-    # generator.save('af_generator')
-    # discriminator.save('af_discriminator')
+    generator.save('models/af_generator')
+    discriminator.save('models/af_discriminator')
     rp = RecurrencePlot()
     prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0].transpose(1, 0)
     print("Comparison shape: {}, Prediction shape: {}".format(transformed[0].transpose(1, 0)[0].shape, prediction[0].shape))
