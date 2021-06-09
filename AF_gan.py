@@ -9,11 +9,12 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 from pyts.image.recurrence import RecurrencePlot
 from tensorflow import keras
+from tensorflow.keras.callbacks import EarlyStopping
 
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss, wasserstein_loss_fn, wasserstein_metric_fn)
 from keras_data import data_to_dataset, plot_data, standardize
-from keras_gan import WGAN, cWGAN
+from keras_gan import WGAN, cWGAN, fft_callback
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.AF_gan_architecture import (make_AF_discriminator,
                                                      make_AF_generator, make_AF_spectrogram_discriminator_1,
@@ -60,8 +61,8 @@ def signal_dict_to_list(data):
     signal_data = list(map(lambda x: [data[key][x] for key in keys[1:]], indices))
     return signal_data  # grab all but time list and make list
 
-
-# def convert_to_time_data
+def make_dataset():
+    pass
 
 def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
     if np.ndim(data) < 2 or np.ndim(data) > 3:
@@ -138,34 +139,66 @@ def get_cross_correlate_score(dataset, synth):
 
 def get_fft_score(dataset, synth):
     # Get ffts
-    synth_fft, data_fft = scipy.fft.fft(synth), scipy.fft.fft(dataset)
-    # print('Synth FFT shape: {}, Data FFT Shape: {}'.format(synth_fft.shape, data_ff.shape))
+    # print('Function start')
+    synth_fft, data_fft = scipy.fft.fft(np.array(synth)), scipy.fft.fft(np.array(dataset))
+    # print('Synth FFT shape: {}, Data FFT Shape: {}'.format(synth_fft.shape, data_fft.shape))
     min_diffs = list()
     for synth_obj in synth_fft:
-        min_diff, diff = 1e99, None
+        min_diff = 1e99
         for data_obj in data_fft:
-            diff = data_obj - synth_obj
+            diff = np.real(data_obj - synth_obj)
             # print('Difference: {}'.format(diff))
             diff = np.square(diff)
             # print('Squared: {}'.format((diff < 0.0).any()))
             # print('Squared shape: {}'.format(diff.shape))
-            diff = np.sum(diff, axis=1)
+            # diff = np.sum(diff, axis=1)
             # print('Summed shape: {}'.format(diff.shape))
-            diff = np.average(np.sqrt(diff))
+            diff = np.average(diff)
+            # print('Average shape: {}'.format(diff.shape))
             # print('Average: {}'.format(diff))
             # diff = np.average(np.square(data_fft[data_obj] - synth_fft))
             # print('Total squared difference: {}, Current minimum: {}'.format(diff, min_diff))
             min_diff = min(min_diff, diff)
         min_diffs.append(min_diff)
-    min_diffs = np.array(min_diffs)
+    # min_diff_one_loop = np.array(min_diff_one_loop)
+    min_diffs = np.sqrt(np.real(min_diffs))  # .astype('float32')
     # min_diffs = np.sqrt(np.array(min_diffs))
     # print(min_diffs.shape)
-    # print(min_diffs)
+    # print(min_diff_one_loop.shape)
+    # print(np.average(min_diff_one_loop))
+    # print(np.average(min_diffs))
+    # print('Function end')
     return np.average(min_diffs)
 
-
+@tf.function
 def metric_fft_score(dataset, synth):
-    return tf.cast(tf.numpy_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)*1000
+    return tf.cast(tf.py_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)*1000
+
+
+# Deprecated - Method takes longer than non-tf function
+# @tf.function
+# def metric_fft_score_par_compiled(dataset, synth):
+#     synth_fft, data_fft = tf.signal.fft(tf.cast(dataset, tf.complex64)), tf.signal.fft(tf.cast(synth, tf.complex64))
+#     min_diffs = tf.TensorArray(tf.float64, size=0, dynamic_size=True)
+#     for synth_obj in synth_fft:
+#         min_diff = tf.constant(1e99, dtype=tf.float64)
+#         for data_obj in data_fft:
+#             diff = tf.math.squared_difference(data_obj, synth_obj)
+#             # diff = tf.math.reduce_sum(diff, axis=1)
+#             diff = tf.math.sqrt(tf.math.reduce_mean(diff))
+#             min_diff = tf.math.minimum(tf.cast(min_diff, tf.float64), tf.cast(diff, tf.float64))
+#         min_diffs = min_diffs.write(min_diffs.size(), min_diff)
+#         # min_diffs.append(min_diff)
+#     # min_diff_one_loop = tf.constant(min_diff_one_loop)
+#     min_diffs = min_diffs.stack()
+#     # min_diffs = np.sqrt(np.array(min_diffs))
+#     # print(min_diffs.shape)
+#     # print(min_diff_one_loop.shape)
+#     # print(np.average(min_diff_one_loop))
+#     # print(np.average(min_diffs))
+#     # print('Function end')
+#     return tf.reduce_mean(min_diffs)*1000
+
 
 def normalize_data(data):
     norm_data = None
@@ -192,7 +225,7 @@ def denormalize_data(data, norms):
     resized = resized.reshape(data.shape)
     return resized
 
-
+# Can use function instead of class, may keep for holding fft info
 # class AFGANMetric(keras.metrics.Metric):
 #     def __init__(self, name='cross_correlation_rmse', sampling_time=1, **kwargs):
 #         super(AFGANMetric, self).__init__(name=name, **kwargs)
@@ -208,64 +241,73 @@ def denormalize_data(data, norms):
 #     def reset_states(self):
 #         self.fft_score = 1e99
 
-class AFGAN(WGAN):
+# Implemented in keras_gan.py
+# class fft_callback(tf.keras.callbacks):
+#     def on_epoch_end(self, logs=None):
+#         self.model
 
-    # def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn):
-    #     super(WGAN, self).compile()
-    #     self.d_optimizer = d_optimizer
-    #     self.g_optimizer = g_optimizer
-    #     self.d_loss_fn = d_loss_fn
-    #     self.g_loss_fn = g_loss_fn
-
-    def train_step(self, real_images):
-        if isinstance(real_images, tuple):
-            real_images = real_images[0]
-        data_type = real_images.dtype
-        batch_size = tf.shape(real_images)[0]
-        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
-        generated = self.generator(random_latent_vectors)
-        real_labels, fakes_labels = tf.ones((batch_size, 1), dtype=data_type), -tf.ones((batch_size, 1), dtype=data_type)
-        d_loss, g_loss, avg_d_loss, avg_g_loss = 0, 0, 0, 0
-        lamb = 10 # tf.constant(10, dtype=data_type)
-        for _ in range(self.discriminator_epochs):
-            with tf.GradientTape() as tape:
-                # d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
-                d_loss = self.d_loss_fn(tf.concat((real_labels, fakes_labels), 0), tf.concat((self.discriminator(real_images), self.discriminator(generated)), 0))
-                r = tf.random.uniform(shape=[1])
-                x_hat = r*real_images + (1 - r)*generated
-                val = lamb*((abs(tf.reduce_mean(x_hat) - tf.reduce_mean(self.discriminator(x_hat))))**2)
-                d_loss += val
-                avg_d_loss += d_loss
-            grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-            self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
-        for _ in range(self.generator_epochs):
-            with tf.GradientTape() as tape:
-                predictions = self.discriminator(self.generator(random_latent_vectors))
-                g_loss = self.g_loss_fn(real_labels, predictions) # g_loss = self.g_loss_fn(None, predictions)
-                avg_g_loss += g_loss
-            grads = tape.gradient(g_loss, self.generator.trainable_weights)
-            self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
-
-        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
-        # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        fft_score = metric_fft_score(real_images, self.generator(random_latent_vectors))
-        # tf.config.run_functions_eagerly(False)
-        return {'d_loss': d_loss, 'g_loss': g_loss,
-                'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(self.generator(random_latent_vectors))),
-                'fft_score': fft_score}
+# Implementation of metrics makes this obsolete
+# class AFGAN(WGAN):
+#
+#     # def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn):
+#     #     super(WGAN, self).compile()
+#     #     self.d_optimizer = d_optimizer
+#     #     self.g_optimizer = g_optimizer
+#     #     self.d_loss_fn = d_loss_fn
+#     #     self.g_loss_fn = g_loss_fn
+#
+#     def train_step(self, real_images):
+#         if isinstance(real_images, tuple):
+#             real_images = real_images[0]
+#         data_type = real_images.dtype
+#         batch_size = tf.shape(real_images)[0]
+#         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
+#         generated = self.generator(random_latent_vectors)
+#         real_labels, fakes_labels = tf.ones((batch_size, 1), dtype=data_type), -tf.ones((batch_size, 1), dtype=data_type)
+#         d_loss, g_loss, avg_d_loss, avg_g_loss = 0, 0, 0, 0
+#         lamb = 10 # tf.constant(10, dtype=data_type)
+#         for _ in range(self.discriminator_epochs):
+#             with tf.GradientTape() as tape:
+#                 # d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
+#                 d_loss = self.d_loss_fn(tf.concat((real_labels, fakes_labels), 0), tf.concat((self.discriminator(real_images), self.discriminator(generated)), 0))
+#                 r = tf.random.uniform(shape=[1])
+#                 x_hat = r*real_images + (1 - r)*generated
+#                 val = lamb*((abs(tf.reduce_mean(x_hat) - tf.reduce_mean(self.discriminator(x_hat))))**2)
+#                 d_loss += val
+#                 avg_d_loss += d_loss
+#             grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+#             self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
+#         for _ in range(self.generator_epochs):
+#             with tf.GradientTape() as tape:
+#                 predictions = self.discriminator(self.generator(random_latent_vectors))
+#                 g_loss = self.g_loss_fn(real_labels, predictions) # g_loss = self.g_loss_fn(None, predictions)
+#                 avg_g_loss += g_loss
+#             grads = tape.gradient(g_loss, self.generator.trainable_weights)
+#             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
+#
+#         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
+#         # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
+#         self.compiled_metrics.update_state(real_images, self.generator(random_latent_vectors))
+#         metrics = {m.name: m.result() for m in self.metrics}
+#         fft_score = metric_fft_score(real_images, self.generator(random_latent_vectors))
+#         wasserstein_score = wasserstein_metric_fn(None, self.discriminator(self.generator(random_latent_vectors)))
+#         # tf.config.run_functions_eagerly(False)
+#         my_metrics = {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_score, 'fft_score': fft_score}
+#         metrics.update(my_metrics)
+#         return metrics
 
 
 if __name__ == '__main__':
     # tf.config.run_functions_eagerly(True)
     print(tf.executing_eagerly())
-    data_type, batch_size = 'float32', 8
+    data_type, batch_size = 'float32', 2
     # print(os.getcwd())
     # exit()
     time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [
         read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
                                                                                   'T04repeat.txt', 'T05.txt', 'T06.txt',
                                                                                   'T07.txt', 'T08.txt']]
-    benign_data = np.array(benign_data[0:1]) # Training on one example to narrow down issue
+    benign_data = np.array(benign_data[0:]) # Training on one example to narrow down issue
     # time, benign_data = np.load('../signal_data/time_np.npy'), np.concatenate(
     #     [[np.load(os.path.join('../signal_data', name + '_np.npy'))] for name in ['T04',
     #                                                                               'T04repeat', 'T05', 'T06', 'T07',
@@ -303,13 +345,15 @@ if __name__ == '__main__':
     # exit()
     transformed = transformed.transpose((0, 2, 1))
     # Repeat data to increase data size
-    transformed = transformed.repeat(1e4, axis=0)
+    transformed = transformed.repeat(2e3, axis=0)  # 1e4
     print('Repeated shape: '.format(transformed.shape))
-    # fs = data_size / (time[-1] - time[0])
+    fs = data_size / (time[-1] - time[0])
     # print(fs)
-    # temp_sig = signal.spectrogram(benign_data_transposed[0], fs)
-    # print(temp_sig[2].shape)
-    # plt.pcolormesh(temp_sig[2][0])
+    # for idx in range(5):
+    #     f, t, temp_sig = signal.spectrogram(benign_data_transposed[0, idx], fs, nperseg=500, noverlap=125)
+    #     # print(temp_sig[2].shape)
+    #     plt.figure()
+    #     plt.pcolormesh(t, f, temp_sig, shading='gouraud')
     # plt.show()
     # spectrogram_scipy = []
     # for idx in range(benign_data_transposed.shape[0]):
@@ -355,18 +399,20 @@ if __name__ == '__main__':
     # generator attempts to produce even numbers, discriminator will tell if true or not
     wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
     wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0009)
+                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0007),
+                 metrics=[metric_fft_score, 'accuracy']
                  )
     # exit()
     wgan.set_train_epochs(4, 1)
     # # prefit with generic data for few shot learning
     # wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
     # # Train model with real data
-    wgan.fit(dataset, epochs=2, batch_size=batch_size)
+    early_stop = EarlyStopping(monitor='metric_fft_score', mode='min', min_delta=1e-2, verbose=1, patience=5)
+    wgan.fit(dataset, epochs=64, batch_size=batch_size, callbacks=[fft_callback(), early_stop])
 
     # Saving models
-    generator.save('models/af_generator')
-    discriminator.save('models/af_discriminator')
+    generator.save('models/af_generator_full')
+    discriminator.save('models/af_discriminator_full')
     rp = RecurrencePlot()
     prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0].transpose(1, 0)
     print("Comparison shape: {}, Prediction shape: {}".format(transformed[0].transpose(1, 0)[0].shape, prediction[0].shape))
@@ -386,13 +432,6 @@ if __name__ == '__main__':
         temp_synth = signal.correlate(comp_sig, prediction[data_col])
         ax[data_col].plot(temp_orig)
         ax[data_col].plot(temp_synth)
-    # ax[0].imshow(orig, cmap='binary')
-    # # plt.show()
-    # ax[1].imshow(synth, cmap='binary')
-    # # plt.show()
-    # ax[2].imshow(orig - synth, cmap='binary')
-    # plt.savefig('./results/AF_RP_5_23_21.png')
-    # plt.show()
     cross_corr_fig = plt.figure()
     ax = cross_corr_fig.subplots(nrows=3)
     ax[0].plot(signal.correlate(transformed.transpose(0, 2, 1)[0, 0], transformed.transpose(0, 2, 1)[0, 0]))
@@ -400,7 +439,7 @@ if __name__ == '__main__':
     ax[2].plot(signal.correlate(prediction[0], prediction[0]))
     prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0]
     print(get_cross_correlate_score(benign_data_transposed, generator.predict(tf.random.normal(shape=(1, latent_dimension))).transpose(0, 2, 1)))
-    print(get_fft_score(transformed[0:2].transpose(0, 2, 1), generator.predict(tf.random.normal(shape=(64, latent_dimension))).transpose(0, 2, 1)))  # time,
+    print(get_fft_score(transformed[0:128].transpose(0, 2, 1), generator.predict(tf.random.normal(shape=(64, latent_dimension))).transpose(0, 2, 1)))  # time,
     # prediction = np.transpose(prediction, (0, 2, 1))
     # prediction = [scalers[idx].inverse_transform(benign_data_transposed[:][:][idx]) for idx in range(len(prediction[:][:]))]
     # prediction = np.transpose(prediction, (0, 2, 1))
