@@ -30,8 +30,8 @@ class GAN(keras.Model):
         self.discriminator_epochs = 1
         self.generator_epochs = 1
 
-    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn):
-        super(GAN, self).compile()
+    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, **kwargs):
+        super(GAN, self).compile(**kwargs)
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.d_loss_fn = d_loss_fn
@@ -75,8 +75,8 @@ class GAN(keras.Model):
 
 class WGAN(GAN):
 
-    def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn):
-        super(GAN, self).compile()
+    def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn, **kwargs):
+        super(GAN, self).compile(**kwargs)
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.d_loss_fn = d_loss_fn
@@ -113,7 +113,12 @@ class WGAN(GAN):
 
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
         # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(self.generator(random_latent_vectors)))}   
+        self.compiled_metrics.update_state(real_images, self.generator(random_latent_vectors))
+        metrics = {m.name: m.result() for m in self.metrics}
+        wasserstein_score = wasserstein_metric_fn(None, self.discriminator(self.generator(random_latent_vectors)))
+        my_metrics = {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_score}
+        metrics.update(my_metrics)
+        return metrics
 
 class cWGAN(WGAN):
     def train_step(self, data):
@@ -151,6 +156,11 @@ class cWGAN(WGAN):
         return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(1, self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels)))}   
         # return {'d_loss': d_loss, 'g_loss': g_loss}
 
+
+class fft_callback(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        print(list(logs.keys()))
+        print(logs['metric_fft_score'])
 # class TSGAN(GAN):
 #     pass
 
