@@ -113,7 +113,7 @@ def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='floa
         layers.Reshape((mini_data, channels)),
         layers.Conv1DTranspose(32, 3, strides=1, padding='same'),
         layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
         # layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
@@ -122,7 +122,7 @@ def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='floa
         # layers.LeakyReLU(alpha=0.2),
         layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
         layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
         layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
         layers.BatchNormalization(),
         layers.LeakyReLU(alpha=0.2),
@@ -131,7 +131,7 @@ def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='floa
         # layers.LeakyReLU(alpha=0.2),
         layers.Conv1DTranspose(32, 5, strides=5, padding='same'),
         layers.BatchNormalization(),
-        layers.LeakyReLU(alpha=0.2),
+        layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
         # layers.Conv1DTranspose(8, 3, strides=1, padding='same'),
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
@@ -140,7 +140,7 @@ def make_sine_gan_cnn_generator(latent_dimension, summary=False, data_type='floa
         # layers.LeakyReLU(alpha=0.2),
         layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type),  # get signal stand
         # layers.BatchNormalization(),
-        layers.Conv1DTranspose(1, 1, strides=1, padding='same', dtype=data_type, use_bias=False),  # choose amplitude
+        # layers.Conv1DTranspose(1, 1, strides=1, padding='valid', dtype=data_type, use_bias=False),  # choose amplitude
         # layers.BatchNormalization(),
         # layers.LeakyReLU(alpha=0.2),
         # layers.Conv1DTranspose(1, 5, strides=1, padding='same'),
