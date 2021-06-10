@@ -30,8 +30,8 @@ class GAN(keras.Model):
         self.discriminator_epochs = 1
         self.generator_epochs = 1
 
-    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn):
-        super(GAN, self).compile()
+    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, metrics=None):
+        super(GAN, self).compile(metrics=metrics)
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.d_loss_fn = d_loss_fn
@@ -71,12 +71,15 @@ class GAN(keras.Model):
                 g_loss = self.g_loss_fn(fakes_labels, predictions)
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
-        return {'d_loss': d_loss, 'g_loss': g_loss}
+        metrics = {m.name: m.result() for m in self.metrics}
+        metrics.update({'d_loss': d_loss, 'g_loss': g_loss})
+        return metrics
+        # return {'d_loss': d_loss, 'g_loss': g_loss}
 
 class WGAN(GAN):
 
-    def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn):
-        super(GAN, self).compile()
+    def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn, metrics=None):
+        super(GAN, self).compile(metrics=metrics)
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.d_loss_fn = d_loss_fn
@@ -112,8 +115,12 @@ class WGAN(GAN):
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
 
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
+        generated = self.generator(random_latent_vectors)
         # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(self.generator(random_latent_vectors)))}   
+        self.compiled_metrics.update_state(real_images, generated)
+        metrics = {m.name: m.result() for m in self.metrics}
+        metrics.update({'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(-2, self.discriminator(generated))})
+        return metrics
 
 class cWGAN(WGAN):
     def train_step(self, data):
