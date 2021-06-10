@@ -33,5 +33,6 @@ class SineGANTest(TestCase):
         model = make_conditional_sine_gan_cnn_generator(256, 6000, 4, summary=True)
         self.assertTrue(bool(model))
 
+
 if __name__ == '__main__':
     unittest.main()

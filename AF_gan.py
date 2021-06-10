@@ -1,5 +1,6 @@
 import os
 
+import sklearn.preprocessing as preprocessing
 import numpy as np
 from scipy import signal
 import tensorflow as tf
@@ -60,18 +61,44 @@ def signal_dict_to_list(data):
 
 # def convert_to_time_data
 
-def plot_data(x_values, list_y_values, show=False, save=True, save_path=''):
-    for idx in range(len(save_paths)):
-        y_values = list_y_values[idx]
-        print(y_values)
-        print(y_values.shape)
-        plt.plot(x_values, y_values)
-        plt.title(label=save_path.split('/')[-1] + save_paths[idx])
-        if save and save_path:
-            plt.savefig(save_path + save_paths[idx])
-        if show:
-            plt.show()
-        plt.close()
+def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
+    if np.ndim(data) < 2 or np.ndim(data) > 3:
+        return
+    if np.ndim(data) == 2:
+        n_features = data.shape[0]
+        temp_fig = plt.figure()
+        temp_ax = temp_fig.subplots(nrows=(1 if ref_data is None else 2), ncols=n_features, sharex=True)
+        if ref_data is not None:
+            for idx in range(n_features):
+                temp_ax[0, idx].plot(time, data[idx])
+                temp_ax[1, idx].plot(time, ref_data[idx])
+        else:
+            for idx in range(n_features):
+                temp_ax[idx].plot(time, data[idx])
+    elif np.ndim(data) == 3:
+        num_features = data.shape[1]
+        for sample_idx in range(data.shape[0]):
+            temp_fig = plt.figure()
+            temp_ax = temp_fig.subplots(nrows=(1 if ref_data is None else 2), ncols=num_features, sharex=True)
+            if ref_data is not None:
+                for idx in range(num_features):
+                    temp_ax[0, idx].plot(time, data[idx])
+                    temp_ax[1, idx].plot(time, ref_data[idx])
+            else:
+                for idx in range(num_features):
+                    temp_ax[idx].plot(time, data[idx])
+    plt.show()
+    # for idx in range(len(save_paths)):
+    #     y_values = list_y_values[idx]
+    #     print(y_values)
+    #     print(y_values.shape)
+    #     plt.plot(x_values, y_values)
+    #     plt.title(label=save_path.split('/')[-1] + save_paths[idx])
+    #     if save and save_path:
+    #         plt.savefig(save_path + save_paths[idx])
+    #     if show:
+    #         plt.show()
+    #     plt.close()
 
 
 def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], amplitudes=[1], h_offsets=[0],
@@ -89,21 +116,48 @@ def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], a
     return signals
 
 
+def normalize_data(data):
+    norm_data = None
+    if np.ndim(data) < 2 or np.ndim(data) > 3:
+        return None
+    elif np.ndim(data) == 3:
+        norm_data = data.reshape((data.shape[1], -1))
+    elif np.ndim(data) == 2:
+        norm_data = data.reshape((data.shape[0], -1))
+    norm_data, norm = preprocessing.normalize(norm_data, norm='l2', axis=1, return_norm=True)
+    norm_data = norm_data.reshape(data.shape)
+    return norm_data, norm
+
+
+def denormalize_data(data, norms):
+    norm_data = None
+    if np.ndim(data) < 2 or np.ndim(data) > 3:
+        return None
+    elif np.ndim(data) == 3:
+        norm_data = data.reshape((data.shape[1], -1))
+    elif np.ndim(data) == 2:
+        norm_data = data.reshape((data.shape[0], -1))
+    resized = np.array([norm_data[idx, :] * norm_val for idx, norm_val in enumerate(norms)])
+    resized = resized.reshape(data.shape)
+    return resized
+
+
 if __name__ == '__main__':
-    data_type, batch_size = 'float32', 6
+    data_type, batch_size = 'float32', 8
+    # plt.ion()
     # print(os.getcwd())
     # exit()
     time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [
         read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
                                                                                   'T04repeat.txt', 'T05.txt', 'T06.txt',
                                                                                   'T07.txt', 'T08.txt']]
-    benign_data = np.array(benign_data)
+    benign_data = np.array([benign_data[0]]) # Training on one example to narrow down issue
     # time, benign_data = np.load('../signal_data/time_np.npy'), np.concatenate(
     #     [[np.load(os.path.join('../signal_data', name + '_np.npy'))] for name in ['T04',
     #                                                                               'T04repeat', 'T05', 'T06', 'T07',
     #                                                                               'T08']])
-    print(benign_data.shape)
-    # # Repeat data to increase data size
+
+    # Repeat data to increase data size
     # benign_data = benign_data.repeat(1e3, axis=0)
     # print(benign_data.shape)
 
@@ -118,8 +172,35 @@ if __name__ == '__main__':
     # print(np.load('../signal_data/T05_np.npy').shape)
     data_size, num_data_types = len(time), len(keys) - 1
     vector_size, latent_dimension = data_size, 256
-    fs = data_size / (time[-1] - time[0])
-    print(fs)
+    # print(range(len(benign_data_transposed[:][0][:])))
+    # print(benign_data_transposed.shape)
+    # print(benign_data_transposed[:, 0].shape)
+    transformed, scalars = normalize_data(benign_data_transposed)
+    resized = denormalize_data(transformed, scalars)
+    # diff = np.abs(benign_data_transposed - resized)
+    # print('Absolute Differences: min - {} max - {} total - {}'.format(diff.min(), diff.max(), diff.sum()))
+    # print(benign_data_transposed[0, 1].max(), benign_data_transposed[0, 3].max())
+    # # scalers = [preprocessing.Normalizer().fit(benign_data_transposed[:, idx]) for idx in range(num_data_types)]
+    # # transformed = np.array([scalers[idx].transform(benign_data_transposed[:, idx]) for idx in range(num_data_types)])
+    # print('Normalized shape: {}'.format(transformed.shape))
+    # # Transpose from (features, data, points) to (data, features, points)
+    # # transformed = np.transpose(transformed, (1, 0, 2))
+    # # print(transformed.shape)
+    # fig = plt.figure()
+    # ax = fig.subplots(nrows=3, ncols=5) # 5 is magic number for number of plots
+    # for idx in range(5):
+    #     ax[0, idx].plot(time, benign_data_transposed[0, idx])
+    #     ax[1, idx].plot(time, transformed[0, idx])
+    #     ax[2, idx].plot(time, resized[0, idx])
+    # plt.savefig('./results/raw_vs_normalized_plots.png')
+    # plt.show()
+    # exit()
+    transformed = transformed.transpose((0, 2, 1))
+    # Repeat data to increase data size
+    transformed = transformed.repeat(1e4, axis=0)
+    print('Repeated shape: '.format(transformed.shape))
+    # fs = data_size / (time[-1] - time[0])
+    # print(fs)
     # temp_sig = signal.spectrogram(benign_data_transposed[0], fs)
     # print(temp_sig[2].shape)
     # plt.pcolormesh(temp_sig[2][0])
@@ -158,7 +239,8 @@ if __name__ == '__main__':
     # plt.pcolormesh(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
     # plt.show()
     # exit()
-    dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
+    dataset = data_to_dataset(transformed, dtype=data_type, batch_size=batch_size, shuffle=True)
+    # dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
     # create discriminator and generator
     print(np.array(benign_data).shape)
 
@@ -166,28 +248,36 @@ if __name__ == '__main__':
     generator = make_AF_generator(latent_dimension, num_data_types, data_size)
     # generator attempts to produce even numbers, discriminator will tell if true or not
     wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
-    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
-                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0006)
+    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
+                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0002)
                  )
     # exit()
     wgan.set_train_epochs(4, 1)
     # # prefit with generic data for few shot learning
     # wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
-    wgan.fit(dataset, epochs=1024, batch_size=batch_size)
+    # # Train model with real data
+    wgan.fit(dataset, epochs=64, batch_size=batch_size)
 
     # Saving models
-    # generator.save('af_generator.h5')
-    # discriminator.save('af_discriminator.h5')
+    # generator.save('af_generator')
+    # discriminator.save('af_discriminator')
     # time = np.array(signals[0]['time'])
     rp = RecurrencePlot()
     orig = get_recurrence(benign_data_transposed[0][0], rp)
     synth = get_recurrence(generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0].transpose(1, 0)[0], rp)
-    plt.imshow(orig)
-    plt.show()
-    plt.imshow(synth)
-    plt.show()
-    plt.imshow(orig - synth)
-    plt.show()
+    rec_fig = plt.figure()
+    ax = rec_fig.subplots(ncols=3, sharey=True)
+    ax[0].imshow(orig, cmap='binary')
+    # plt.show()
+    ax[1].imshow(synth, cmap='binary')
+    # plt.show()
+    ax[2].imshow(orig - synth, cmap='binary')
+    # plt.savefig('./results/AF_RP_5_23_21.png')
+    # plt.show()
     prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0]
-    plot_data(time, np.transpose(np.array(prediction), (1, 0)), show=True, save=False,
-              save_path='./keras_NN/results/AF_v1_')
+    # prediction = np.transpose(prediction, (0, 2, 1))
+    # prediction = [scalers[idx].inverse_transform(benign_data_transposed[:][:][idx]) for idx in range(len(prediction[:][:]))]
+    # prediction = np.transpose(prediction, (0, 2, 1))
+    # plt.plot(time, transformed.transpose(0, 2, 1)[0][0])
+    plot_data(time, np.transpose(np.array(prediction), (1, 0)), transformed.transpose(0, 2, 1)[0], show=True, save=True,
+              save_path='./results/AF_5_23_21_')

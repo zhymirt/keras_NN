@@ -7,7 +7,6 @@ Created on Mon Feb  3 23:26:24 2020
 """
 
 
-
 import numpy as np
 # import scipy as sp
 # from scipy import fftpack, signal # have to add 
@@ -35,19 +34,22 @@ def plot_recurrence(y_values, rp, single_sample=True, show=False, save=False, sa
         if show:
             plt.show()
 
+
 def get_recurrence(y_values, rp, single_sample=True):
     x_rp = rp.fit_transform(y_values.reshape(1, -1) if single_sample else y_values.reshape(-1, 1))
     x_rec = x_rp[0]
     return x_rec
+
+
 def get_recurrence_diff(y_1, y_2):
     return y_1 - y_2
+
 
 if __name__ == '__main__':
     # X, _, _, _ = load_gunpoint(return_X_y=True)
 
     xx = np.linspace(0,2,1000)
     yy = np.sin(xx)
-
 
     yyy = yy.reshape(1,-1)
     # (-1, 1) if single feature (1, -1) if single sample
