@@ -14,8 +14,8 @@ from keras_gan import WGAN
 def model_builder(hp):
     vector_size, num_data_types = 5501, 5
     latent_dimension = 256
-    d_hp_units = [hp.Int('d_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(10)]
-    # d_hp_units = [hp.Choice('d_unit_choice_{}'.format(idx), values=[8, 16, 32, 64]) for idx in range(10)]
+    # d_hp_units = [hp.Int('d_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(10)]
+    d_hp_units = [hp.Choice('d_unit_choice_{}'.format(idx), values=[8, 16, 32, 64, 128], default=32) for idx in range(10)]
     discriminator = keras.Sequential(
     [
         layers.Reshape((vector_size, num_data_types), input_shape=(vector_size, num_data_types,)),
@@ -44,7 +44,8 @@ def model_builder(hp):
         layers.Flatten(),
         layers.Dense(1)
     ])
-    g_hp_units = [hp.Int('g_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(7)]
+    # g_hp_units = [hp.Int('g_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(7)]
+    g_hp_units = [hp.Choice('g_unit_choice_{}'.format(idx), values=[8, 16, 32, 64, 128], default=32) for idx in range(7)]
     mini_data, channels = 15, hp.Choice('g_channels', values=[8, 16, 32, 64])
     generator = keras.Sequential(
         [
@@ -85,9 +86,9 @@ def tune_model(model_fn, obj_metric, training_data):
     tuner = kt.Hyperband(model_fn,
                          objective=kt.Objective(obj_metric, direction="min"),
                          max_epochs=100,
-                         factor=3# ,
-                         # directory='my_dir'# ,
-                            # project_name='intro_to_kt'
+                         factor=3,
+                         directory='keras_tuning',
+                        project_name='AF_GAN_tuning'
                          )
     stop_early = tf.keras.callbacks.EarlyStopping(monitor=obj_metric, patience=5)
     tuner.search(training_data, epochs=50, callbacks=[stop_early])
@@ -95,6 +96,7 @@ def tune_model(model_fn, obj_metric, training_data):
     return best_hps, tuner
 
 if __name__=='__main__':
+    # Get data
     # time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [
     #     read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
     #                                                                               'T04repeat.txt', 'T05.txt', 'T06.txt',
@@ -108,9 +110,9 @@ if __name__=='__main__':
     transformed = transformed.transpose((0, 2, 1))
     # Repeat data to increase data size
     transformed = transformed.repeat(2e3, axis=0)  # 1e4
-    benign_data = np.array(benign_data[0:]) # Training on one example to narrow down issue
+    # benign_data = np.array(benign_data) # Training on one example to narrow down issue
     dataset = data_to_dataset(transformed, dtype='float32', batch_size=16, shuffle=True)
+    # Train
     best_hps, tuner = tune_model(model_builder, 'metric_fft_score', dataset)
     for key in best_hps:
         print('Best {}: {}'.format(key, best_hps[key]))
-
