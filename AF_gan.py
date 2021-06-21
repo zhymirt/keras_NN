@@ -53,6 +53,21 @@ def read_file_to_arrays(filename):
             data_line = tempFile.readline()
     return time, data
 
+# def load_data(filename):
+#     if not isinstance(filename, (str, list)):
+#         print('No method to load this data')
+#         return None, None
+#     filename = [filename] if isinstance(filename, str) else filename # if string, make single element list
+#     times, data_arrays = list(), list()
+#     if filename[0].endswith('.txt'):
+#         for name in filename:
+#             time, data = read_file_to_arrays(name)
+#             times.append(time)
+#             data_arrays.append(data)
+#     elif filename[0].endswith('.npy'):
+#         data_arrays = [np.load(name) for name in filename]
+#     else:
+#         print("{} has unhandled extension".format(filename[0]))
 
 def signal_dict_to_list(data):
     """ Take signal dictionary and convert to list, time excluded"""
@@ -64,32 +79,133 @@ def signal_dict_to_list(data):
 def make_dataset():
     pass
 
+
+def plot_recurrence_diff(ref_data, synthetic_data, tmp_rp=None):
+    # recurrence difference plot
+    tmp_rp = RecurrencePlot() if tmp_rp is None else tmp_rp
+    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, synthetic_data.ndim))
+    if ref_data.ndim == 1:
+        ref_data = np.expand_dims(ref_data, 0)
+    if synthetic_data.ndim == 1:
+        synthetic_data = np.expand_dims(synthetic_data, 0)
+    for ref_signal, synthetic_signal in zip(ref_data, synthetic_data):
+        temp_fig = plt.figure()
+        ax = temp_fig.subplots(ncols=2, sharey=True)
+        temp_orig = get_recurrence(ref_signal, tmp_rp)
+        temp_synth = get_recurrence(synthetic_signal, tmp_rp)
+        temp_fig.suptitle('Recurrence Plot Comparisons')
+        # temp_diff = temp_orig - temp_synth
+        ax[0].imshow(temp_orig, cmap='binary', origin='lower')
+        ax[1].imshow(temp_synth, cmap='binary', origin='lower')
+        # ax[2].imshow(temp_diff, cmap='binary', label='Difference btwn Recurrence Plots', origin='lower')
+        ax[0].set_title('Reference Recurrence Plot')
+        ax[1].set_title('Synthetic Recurrence Plot')
+        # ax[2].set_title('Recurrence plot Difference')
+        # for idx, arr in enumerate((temp_orig, temp_synth, temp_diff)):
+        #     ax[idx].imshow(arr, cmap='binary')
+        temp_fig.tight_layout()
+
+
+def plot_correlations(ref_data, synthetic_data):
+    temp_corr_fig = plt.figure()
+    # ax = temp_corr_fig.subplots(ncols=ref_data.shape[0], nrows=2, sharey=True)
+    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, synthetic_data.ndim))
+    if ref_data.ndim == 1:
+        ref_data = np.expand_dims(ref_data, 0)
+    if synthetic_data.ndim == 1:
+        synthetic_data = np.expand_dims(synthetic_data, 0)
+    for idx, (ref_signal, synthetic_signal) in enumerate(zip(ref_data, synthetic_data)):
+        temp_orig_auto = signal.correlate(ref_signal, ref_signal)
+        temp_synth_cross = signal.correlate(ref_signal, synthetic_signal)
+        temp_synth_auto = signal.correlate(synthetic_signal, synthetic_signal)
+        plt.subplot(2, ref_data.shape[0], idx + 1)
+        plt.plot(temp_orig_auto, label='Reference Autocorrelation')
+        plt.plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
+        plt.title('Signal Autocorrelations')
+        plt.legend()
+
+        plt.subplot(2, ref_data.shape[0], ref_data.shape[0] + idx + 1)
+        plt.plot(temp_synth_cross)  # , label='Cross Correlation'
+        plt.plot(temp_synth_cross)  # , label='Cross Correlation'
+        plt.title('Signal Cross Correlation')
+
+        # ax[0][idx].plot(temp_orig_auto, label='Reference Autocorrelation')
+        # ax[1][idx].plot(temp_synth_cross)  # , label='Cross Correlation'
+        # ax[0][idx].plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
+        # ax[0][idx].set_title('Signal Autocorrelations')
+        # ax[1][idx].set_title('Signal Cross Correlation')
+        # ax[0][idx].legend()
+            # ax[1][idx].legend()
+    # if ref_data.shape[0] == 1:
+    #     temp_orig_auto = signal.correlate(ref_data, ref_data)
+    #     temp_synth_cross = signal.correlate(ref_data, synthetic_data)
+    #     temp_synth_auto = signal.correlate(synthetic_data, synthetic_data)
+    #     ax[0].plot(temp_orig_auto, label='Reference Autocorrelation')
+    #     ax[1].plot(temp_synth_cross)  # , label='Cross Correlation'
+    #     ax[0].plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
+    #     ax[0].set_title('Signal Autocorrelations')
+    #     ax[1].set_title('Signal Cross Correlation')
+    #     ax[0].legend()
+    # else:
+    #     for idx, (ref_signal, synthetic_signal) in enumerate(zip(ref_data, synthetic_data)):
+    #         temp_orig_auto = signal.correlate(ref_signal, ref_signal)
+    #         temp_synth_cross = signal.correlate(ref_signal, synthetic_signal)
+    #         temp_synth_auto = signal.correlate(synthetic_signal, synthetic_signal)
+    #         ax[0][idx].plot(temp_orig_auto, label='Reference Autocorrelation')
+    #         ax[1][idx].plot(temp_synth_cross)  # , label='Cross Correlation'
+    #         ax[0][idx].plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
+    #         ax[0][idx].set_title('Signal Autocorrelations')
+    #         ax[1][idx].set_title('Signal Cross Correlation')
+    #         ax[0][idx].legend()
+            # ax[1][idx].legend()
+
+
 def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
+    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, data.ndim))
+    if ref_data.ndim == 1:
+        ref_data = np.expand_dims(ref_data, 0)
+    if data.ndim == 1:
+        data = np.expand_dims(data, 0)
     if np.ndim(data) < 2 or np.ndim(data) > 3:
         return
     if np.ndim(data) == 2:
-        n_features = data.shape[0]
+        n_features, n_rows = data.shape[0], 1 if ref_data is None else 2
         temp_fig = plt.figure()
-        temp_ax = temp_fig.subplots(nrows=(1 if ref_data is None else 2), ncols=n_features, sharex=True)
+        # temp_ax = temp_fig.subplots(nrows=(1 if ref_data is None else 2), ncols=n_features, sharex=True)
         if ref_data is not None:
             for idx in range(n_features):
-                temp_ax[0, idx].plot(time, data[idx])
-                temp_ax[1, idx].plot(time, ref_data[idx])
+                plt.subplot(n_rows, n_features, idx + 1)
+                plt.plot(time, data[idx])
+                plt.title('Generated signal')
+                plt.subplot(n_rows, n_features, n_features + idx + 1)
+                plt.plot(time, ref_data[idx])
+                plt.title('Reference Signal')
+                # temp_ax[0, idx].plot(time, data[idx])
+                # temp_ax[1, idx].plot(time, ref_data[idx])
         else:
             for idx in range(n_features):
-                temp_ax[idx].plot(time, data[idx])
+                plt.subplot(n_rows, n_features, idx + 1)
+                plt.plot(time, data[idx])
+                plt.title('Generated signal')
+                # temp_ax[idx].plot(time, data[idx])
     elif np.ndim(data) == 3:
-        num_features = data.shape[1]
+        num_features,  num_rows = data.shape[1], 1 if ref_data is None else 2
         for sample_idx in range(data.shape[0]):
             temp_fig = plt.figure()
-            temp_ax = temp_fig.subplots(nrows=(1 if ref_data is None else 2), ncols=num_features, sharex=True)
+            # temp_ax = temp_fig.subplots(nrows=(1 if ref_data is None else 2), ncols=num_features, sharex=True)
             if ref_data is not None:
                 for idx in range(num_features):
-                    temp_ax[0, idx].plot(time, data[idx])
-                    temp_ax[1, idx].plot(time, ref_data[idx])
+                    plt.subplot(num_rows, num_features, idx + 1)
+                    plt.plot(time, data[idx])
+                    plt.subplot(num_rows, num_features, num_features + idx + 1)
+                    plt.plot(time, ref_data[idx])
+                    # temp_ax[0, idx].plot(time, data[idx])
+                    # temp_ax[1, idx].plot(time, ref_data[idx])
             else:
                 for idx in range(num_features):
-                    temp_ax[idx].plot(time, data[idx])
+                    plt.subplot(num_rows, num_features, idx + 1)
+                    plt.plot(time, data[idx])
+                    # temp_ax[idx].plot(time, data[idx])
     if save and save_path is not None:
         plt.savefig(save_path)
     if show:
@@ -170,34 +286,10 @@ def get_fft_score(dataset, synth):
     # print('Function end')
     return np.average(min_diffs)
 
+
 @tf.function
 def metric_fft_score(dataset, synth):
     return tf.cast(tf.py_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)*1000
-
-
-# Deprecated - Method takes longer than non-tf function
-# @tf.function
-# def metric_fft_score_par_compiled(dataset, synth):
-#     synth_fft, data_fft = tf.signal.fft(tf.cast(dataset, tf.complex64)), tf.signal.fft(tf.cast(synth, tf.complex64))
-#     min_diffs = tf.TensorArray(tf.float64, size=0, dynamic_size=True)
-#     for synth_obj in synth_fft:
-#         min_diff = tf.constant(1e99, dtype=tf.float64)
-#         for data_obj in data_fft:
-#             diff = tf.math.squared_difference(data_obj, synth_obj)
-#             # diff = tf.math.reduce_sum(diff, axis=1)
-#             diff = tf.math.sqrt(tf.math.reduce_mean(diff))
-#             min_diff = tf.math.minimum(tf.cast(min_diff, tf.float64), tf.cast(diff, tf.float64))
-#         min_diffs = min_diffs.write(min_diffs.size(), min_diff)
-#         # min_diffs.append(min_diff)
-#     # min_diff_one_loop = tf.constant(min_diff_one_loop)
-#     min_diffs = min_diffs.stack()
-#     # min_diffs = np.sqrt(np.array(min_diffs))
-#     # print(min_diffs.shape)
-#     # print(min_diff_one_loop.shape)
-#     # print(np.average(min_diff_one_loop))
-#     # print(np.average(min_diffs))
-#     # print('Function end')
-#     return tf.reduce_mean(min_diffs)*1000
 
 
 def normalize_data(data):
@@ -225,82 +317,9 @@ def denormalize_data(data, norms):
     resized = resized.reshape(data.shape)
     return resized
 
-# Can use function instead of class, may keep for holding fft info
-# class AFGANMetric(keras.metrics.Metric):
-#     def __init__(self, name='cross_correlation_rmse', sampling_time=1, **kwargs):
-#         super(AFGANMetric, self).__init__(name=name, **kwargs)
-#         self.fft_score = 1e99
-#         self.sampling_time = sampling_time
-#
-#     def update_state(self, *args, **kwargs):
-#         pass
-#
-#     def result(self):
-#         return self.fft_score
-#
-#     def reset_states(self):
-#         self.fft_score = 1e99
-
-# Implemented in keras_gan.py
-# class fft_callback(tf.keras.callbacks):
-#     def on_epoch_end(self, logs=None):
-#         self.model
-
-# Implementation of metrics makes this obsolete
-# class AFGAN(WGAN):
-#
-#     # def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn):
-#     #     super(WGAN, self).compile()
-#     #     self.d_optimizer = d_optimizer
-#     #     self.g_optimizer = g_optimizer
-#     #     self.d_loss_fn = d_loss_fn
-#     #     self.g_loss_fn = g_loss_fn
-#
-#     def train_step(self, real_images):
-#         if isinstance(real_images, tuple):
-#             real_images = real_images[0]
-#         data_type = real_images.dtype
-#         batch_size = tf.shape(real_images)[0]
-#         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
-#         generated = self.generator(random_latent_vectors)
-#         real_labels, fakes_labels = tf.ones((batch_size, 1), dtype=data_type), -tf.ones((batch_size, 1), dtype=data_type)
-#         d_loss, g_loss, avg_d_loss, avg_g_loss = 0, 0, 0, 0
-#         lamb = 10 # tf.constant(10, dtype=data_type)
-#         for _ in range(self.discriminator_epochs):
-#             with tf.GradientTape() as tape:
-#                 # d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))
-#                 d_loss = self.d_loss_fn(tf.concat((real_labels, fakes_labels), 0), tf.concat((self.discriminator(real_images), self.discriminator(generated)), 0))
-#                 r = tf.random.uniform(shape=[1])
-#                 x_hat = r*real_images + (1 - r)*generated
-#                 val = lamb*((abs(tf.reduce_mean(x_hat) - tf.reduce_mean(self.discriminator(x_hat))))**2)
-#                 d_loss += val
-#                 avg_d_loss += d_loss
-#             grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-#             self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
-#         for _ in range(self.generator_epochs):
-#             with tf.GradientTape() as tape:
-#                 predictions = self.discriminator(self.generator(random_latent_vectors))
-#                 g_loss = self.g_loss_fn(real_labels, predictions) # g_loss = self.g_loss_fn(None, predictions)
-#                 avg_g_loss += g_loss
-#             grads = tape.gradient(g_loss, self.generator.trainable_weights)
-#             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
-#
-#         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
-#         # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-#         self.compiled_metrics.update_state(real_images, self.generator(random_latent_vectors))
-#         metrics = {m.name: m.result() for m in self.metrics}
-#         fft_score = metric_fft_score(real_images, self.generator(random_latent_vectors))
-#         wasserstein_score = wasserstein_metric_fn(None, self.discriminator(self.generator(random_latent_vectors)))
-#         # tf.config.run_functions_eagerly(False)
-#         my_metrics = {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_score, 'fft_score': fft_score}
-#         metrics.update(my_metrics)
-#         return metrics
-
 
 if __name__ == '__main__':
-    # tf.config.run_functions_eagerly(True)
-    print(tf.executing_eagerly())
-    data_type, batch_size = 'float32', 2
+    data_type, batch_size, method = 'float32', 2, 'standard'
     # print(os.getcwd())
     # exit()
     time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [
@@ -315,7 +334,7 @@ if __name__ == '__main__':
 
     # Repeat data to increase data size
     # benign_data = benign_data.repeat(1e3, axis=0)
-    # print(benign_data.shape)
+    print('Benign data shape: {}'.format(benign_data.shape))
 
     # # Generating generic data for few shot learning
     # init_training = generate_generic_training_data(time, num_signals=100*5, frequencies=range(1, 11),
@@ -325,8 +344,7 @@ if __name__ == '__main__':
     # generic_dataset = data_to_dataset(init_training, dtype=data_type, batch_size=batch_size)
 
     benign_data_transposed = np.transpose(benign_data, (0, 2, 1))
-    data_size, num_data_types = len(time), len(keys) - 1
-    vector_size, latent_dimension = data_size, 256
+    data_size, num_data_types, latent_dimension = len(time), len(keys) - 1, 256
     # print(benign_data_transposed.shape)
     transformed, scalars = normalize_data(benign_data_transposed)
     resized = denormalize_data(transformed, scalars)
@@ -347,102 +365,80 @@ if __name__ == '__main__':
     # Repeat data to increase data size
     transformed = transformed.repeat(2e3, axis=0)  # 1e4
     print('Repeated shape: '.format(transformed.shape))
-    fs = data_size / (time[-1] - time[0])
-    # print(fs)
-    # for idx in range(5):
-    #     f, t, temp_sig = signal.spectrogram(benign_data_transposed[0, idx], fs, nperseg=500, noverlap=125)
-    #     # print(temp_sig[2].shape)
-    #     plt.figure()
-    #     plt.pcolormesh(t, f, temp_sig, shading='gouraud')
-    # plt.show()
-    # spectrogram_scipy = []
-    # for idx in range(benign_data_transposed.shape[0]):
-    #     for jdx in range(benign_data_transposed.shape[1]):
-    #         _, _, spec = signal.spectrogram(benign_data_transposed[idx][jdx][:], fs=fs)
-    #         spectrogram_scipy.append(spec)
-    # spectrogram_scipy = list(
-    #     map(lambda x: signal.spectrogram(x, fs=data_size / (time[-1] - time[0]))[2], benign_data_transposed))
-    # spectrogram_dataset = data_to_dataset(spectrogram_scipy, dtype=data_type, batch_size=batch_size)
-    # # print(benign_data_transposed[0].shape)
-    # # print(spectrogram_scipy[0].shape)
-    # # plt.pcolormesh(spectrogram_scipy[1])
-    # # plt.show()
-    # # exit()
-    # spectrogram_discriminator = make_AF_spectrogram_discriminator_1()
-    # spectrogram_generator = make_AF_spectrogram_generator_1(latent_dimension)
-    # spectrogram_wgan = WGAN(discriminator=spectrogram_discriminator, generator=spectrogram_generator,
-    #                         latent_dim=latent_dimension)
-    # spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
-    #                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0006)
-    #                          )
-    # spectrogram_wgan.set_train_epochs(4, 1)
-    # print(spectrogram_scipy[0].shape)
-    # print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
-    # spectrogram_wgan.fit(spectrogram_dataset, batch_size=None, epochs=1024)
-    # print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
-    # plt.show()
-    # rp = RecurrencePlot()
-    # plot_recurrence(spectrogram_scipy[2], rp, show=True)
-    # plot_recurrence(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension))), rp, show=True)
-    # plt.pcolormesh(spectrogram_scipy[2], cmap='binary')
-    # plt.show()
-    # plt.pcolormesh(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
-    # plt.show()
-    # exit()
-    dataset = data_to_dataset(transformed, dtype=data_type, batch_size=batch_size, shuffle=True)
-    # dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
-    # create discriminator and generator
-    print(np.array(benign_data).shape)
+    if method == 'spectrogram':
+        fs = data_size / (time[-1] - time[0])
+        # print(fs)
+        # for idx in range(5):
+        #     f, t, temp_sig = signal.spectrogram(benign_data_transposed[0, idx], fs, nperseg=500, noverlap=125)
+        #     # print(temp_sig[2].shape)
+        #     plt.figure()
+        #     plt.pcolormesh(t, f, temp_sig, shading='gouraud')
+        # plt.show()
+        # spectrogram_scipy = []
+        # for idx in range(benign_data_transposed.shape[0]):
+        #     for jdx in range(benign_data_transposed.shape[1]):
+        #         _, _, spec = signal.spectrogram(benign_data_transposed[idx][jdx][:], fs=fs)
+        #         spectrogram_scipy.append(spec)
+        # spectrogram_scipy = list(
+        #     map(lambda x: signal.spectrogram(x, fs=data_size / (time[-1] - time[0]))[2], benign_data_transposed))
+        # spectrogram_dataset = data_to_dataset(spectrogram_scipy, dtype=data_type, batch_size=batch_size)
+        # # print(benign_data_transposed[0].shape)
+        # # print(spectrogram_scipy[0].shape)
+        # # plt.pcolormesh(spectrogram_scipy[1])
+        # # plt.show()
+        # # exit()
+        # spectrogram_discriminator = make_AF_spectrogram_discriminator_1()
+        # spectrogram_generator = make_AF_spectrogram_generator_1(latent_dimension)
+        # spectrogram_wgan = WGAN(discriminator=spectrogram_discriminator, generator=spectrogram_generator,
+        #                         latent_dim=latent_dimension)
+        # spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
+        #                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0006)
+        #                          )
+        # spectrogram_wgan.set_train_epochs(4, 1)
+        # print(spectrogram_scipy[0].shape)
+        # print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
+        # spectrogram_wgan.fit(spectrogram_dataset, batch_size=None, epochs=1024)
+        # print(spectrogram_discriminator.predict(tf.convert_to_tensor([spectrogram_scipy[0]])))
+        # plt.show()
+        # rp = RecurrencePlot()
+        # plot_recurrence(spectrogram_scipy[2], rp, show=True)
+        # plot_recurrence(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension))), rp, show=True)
+        # plt.pcolormesh(spectrogram_scipy[2], cmap='binary')
+        # plt.show()
+        # plt.pcolormesh(spectrogram_generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], cmap='binary')
+        # plt.show()
+        # exit()
+    else:
+        dataset = data_to_dataset(transformed, dtype=data_type, batch_size=batch_size, shuffle=True)
+        # dataset = data_to_dataset(benign_data, dtype=data_type, batch_size=batch_size, shuffle=True)
+        # create discriminator and generator
 
-    discriminator = make_AF_discriminator(num_data_types, data_size)
-    generator = make_AF_generator(latent_dimension, num_data_types, data_size)
-    # generator attempts to produce even numbers, discriminator will tell if true or not
-    wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
-    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0007),
-                 metrics=[metric_fft_score, 'accuracy']
-                 )
-    # exit()
-    wgan.set_train_epochs(4, 1)
-    # # prefit with generic data for few shot learning
-    # wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
-    # # Train model with real data
-    early_stop = EarlyStopping(monitor='metric_fft_score', mode='min', min_delta=1e-2, verbose=1, patience=5)
-    wgan.fit(dataset, epochs=64, batch_size=batch_size, callbacks=[fft_callback(), early_stop])
-
-    # Saving models
-    generator.save('models/af_generator_full')
-    discriminator.save('models/af_discriminator_full')
-    rp = RecurrencePlot()
-    prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0].transpose(1, 0)
-    print("Comparison shape: {}, Prediction shape: {}".format(transformed[0].transpose(1, 0)[0].shape, prediction[0].shape))
-    for data_col in range(benign_data_transposed[0].shape[0]):
-        temp_fig = plt.figure()
-        ax = temp_fig.subplots(ncols=3, sharey=True)
-        temp_orig = get_recurrence(benign_data_transposed[0, data_col], rp)
-        temp_synth = get_recurrence(prediction[data_col], rp)
-        temp_diff = temp_orig - temp_synth
-        for idx, arr in enumerate((temp_orig, temp_synth, temp_diff)):
-            ax[idx].imshow(arr, cmap='binary')
-    temp_corr_fig = plt.figure()
-    ax = temp_corr_fig.subplots(ncols=benign_data_transposed[0].shape[0], sharey=True)
-    for data_col in range(benign_data_transposed[0].shape[0]):
-        comp_sig = transformed[0].transpose(1, 0)[data_col]
-        temp_orig = signal.correlate(comp_sig, comp_sig)
-        temp_synth = signal.correlate(comp_sig, prediction[data_col])
-        ax[data_col].plot(temp_orig)
-        ax[data_col].plot(temp_synth)
-    cross_corr_fig = plt.figure()
-    ax = cross_corr_fig.subplots(nrows=3)
-    ax[0].plot(signal.correlate(transformed.transpose(0, 2, 1)[0, 0], transformed.transpose(0, 2, 1)[0, 0]))
-    ax[1].plot(signal.correlate(transformed.transpose(0, 2, 1)[0, 0], prediction[0]))
-    ax[2].plot(signal.correlate(prediction[0], prediction[0]))
-    prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0]
-    print(get_cross_correlate_score(benign_data_transposed, generator.predict(tf.random.normal(shape=(1, latent_dimension))).transpose(0, 2, 1)))
-    print(get_fft_score(transformed[0:128].transpose(0, 2, 1), generator.predict(tf.random.normal(shape=(64, latent_dimension))).transpose(0, 2, 1)))  # time,
-    # prediction = np.transpose(prediction, (0, 2, 1))
-    # prediction = [scalers[idx].inverse_transform(benign_data_transposed[:][:][idx]) for idx in range(len(prediction[:][:]))]
-    # prediction = np.transpose(prediction, (0, 2, 1))
-    # plt.plot(time, transformed.transpose(0, 2, 1)[0][0])
-    plot_data(time, np.transpose(np.array(prediction), (1, 0)), transformed.transpose(0, 2, 1)[0], show=True, save=False,
-              save_path='./results/AF_5_23_21_')
+        discriminator = make_AF_discriminator(num_data_types, data_size)
+        generator = make_AF_generator(latent_dimension, num_data_types, data_size)
+        # generator attempts to produce even numbers, discriminator will tell if true or not
+        wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
+        wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+                     g_optimizer=keras.optimizers.Adam(learning_rate=0.0007),
+                     metrics=[metric_fft_score, 'accuracy']
+                     )
+        wgan.set_train_epochs(4, 1)
+        # # prefit with generic data for few shot learning
+        # wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
+        # Train model with real data
+        early_stop = EarlyStopping(monitor='metric_fft_score', mode='min', min_delta=1e-2, verbose=1, patience=5)
+        wgan.fit(dataset, epochs=0, batch_size=batch_size, callbacks=[fft_callback(), early_stop])
+        # Saving models
+        # generator.save('models/af_generator_full')
+        # discriminator.save('models/af_discriminator_full')
+        rp = RecurrencePlot()
+        prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0].transpose(1, 0)
+        # recurrence difference plot
+        plot_recurrence_diff(benign_data_transposed[0], prediction)
+        # plt.show()
+        plot_correlations(transformed[0].transpose(1, 0), prediction)
+        plt.show()
+        prediction = generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0]
+        print(get_cross_correlate_score(benign_data_transposed, generator.predict(tf.random.normal(shape=(1, latent_dimension))).transpose(0, 2, 1)))
+        print(get_fft_score(transformed[0:128].transpose(0, 2, 1), generator.predict(tf.random.normal(shape=(64, latent_dimension))).transpose(0, 2, 1)))  # time,
+        plot_data(time, np.transpose(np.array(prediction), (1, 0)), transformed.transpose(0, 2, 1)[0], show=True, save=False,
+                  save_path='./results/AF_5_23_21_')
