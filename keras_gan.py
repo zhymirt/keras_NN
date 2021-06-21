@@ -145,7 +145,7 @@ class cWGAN(WGAN):
             self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
         for _ in range(self.generator_epochs):
             with tf.GradientTape() as tape:
-                predictions = self.discriminator((self.generator((random_latent_vectors, class_labels)),class_labels))
+                predictions = self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels))
                 g_loss = self.g_loss_fn(real_labels, predictions) # g_loss = self.g_loss_fn(None, predictions)
                 avg_g_loss += g_loss
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
@@ -153,8 +153,17 @@ class cWGAN(WGAN):
 
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
         # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
-        return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(1, self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels)))}   
-        # return {'d_loss': d_loss, 'g_loss': g_loss}
+        self.compiled_metrics.update_state(real_images, self.generator((random_latent_vectors, class_labels)))
+        metrics = {m.name: m.result() for m in self.metrics}
+        wasserstein_score = wasserstein_metric_fn(None, self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels)))
+        my_metrics = {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_score}
+        metrics.update(my_metrics)
+        return metrics
+
+        # random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
+        # # avg_d_loss, avg_g_loss = avg_d_loss / self.discriminator_epochs, avg_g_loss / self.generator_epochs
+        # return {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_metric_fn(1, self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels)))}
+        # # return {'d_loss': d_loss, 'g_loss': g_loss}
 
 
 class fft_callback(tf.keras.callbacks.Callback):
