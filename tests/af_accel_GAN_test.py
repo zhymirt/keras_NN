@@ -5,29 +5,33 @@ import numpy as np
 
 from af_accel_GAN import load_data_files, prepare_data
 from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator, \
-    make_conditional_af_accel_discriminator, make_conditional_af_accel_generator
+    make_conditional_af_accel_discriminator, make_conditional_af_accel_generator, make_af_accel_fcc_generator
 from AF_gan import get_fft_score, normalize_data
 from keras_gan import generate_sine
 
 class MyTestCase(unittest.TestCase):
 
+    def test_fcc_generator_succeeds(self):
+        model = make_af_accel_fcc_generator(256, 5000, summary=True)
+        self.assertTrue(bool(model))
+
     def test_discriminator_succeeds(self):
-        model = make_af_accel_discriminator(4000, summary=True)
+        model = make_af_accel_discriminator(5000, summary=True)
         self.assertTrue(bool(model))
 
     def test_generator_succeeds(self):
-        model = make_af_accel_generator(256, 4000, summary=True)
+        model = make_af_accel_generator(256, 5000, summary=True)
         self.assertTrue(bool(model))
-        self.assertEqual(model.output_shape, (None, 4000))
+        self.assertEqual(model.output_shape, (None, 5000))
 
     def test_conditional_discriminator_succeeds(self):
-        model = make_conditional_af_accel_discriminator(4000, 5, summary=True)
+        model = make_conditional_af_accel_discriminator(5_000, 5, summary=True)
         self.assertTrue(bool(model))
 
     def test_conditional_generator_succeeds(self):
-        model = make_conditional_af_accel_generator(256, 4000, 5, summary=True)
+        model = make_conditional_af_accel_generator(256, 5_000, 5, summary=True)
         self.assertTrue(bool(model))
-        self.assertEqual(model.output_shape, (None, 4000))
+        self.assertEqual(model.output_shape, (None, 5_000))
 
     def test_fft_score(self):
         wave = generate_sine(0, 5, 6_000, 2)
@@ -49,7 +53,7 @@ class MyTestCase(unittest.TestCase):
         full_data, labels = [], []
         print('Full time shape: {}'.format(full_time.shape))
         for example_set in complete_data.transpose((0, 2, 1)):
-            for test_num, test in enumerate(example_set[1:]):
+            for test_num, test in enumerate(example_set[1:5]):
                 # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
                 labels.append(test_num + 1)
                 full_data.append(test)
