@@ -250,7 +250,15 @@ def get_auto_correlate_score(dataset, synth):
 
 
 def get_cross_correlate_score(dataset, synth):
-    pass
+    correlates = []
+    for d_sample, s_sample in zip(dataset, synth):
+        correlate = signal.correlate(d_sample, s_sample)
+        print(correlate.shape)
+        correlates.append(np.max(correlate))
+    # correlate = signal.correlate(dataset, synth)
+    correlates = np.asarray(correlates)
+    print(correlates.shape)
+    return np.average(np.asarray(correlates))
 
 
 def get_fft_score(dataset, synth):
@@ -289,7 +297,7 @@ def get_fft_score(dataset, synth):
 
 @tf.function
 def metric_fft_score(dataset, synth):
-    return tf.cast(tf.py_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)*1000
+    return tf.cast(tf.py_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)
 
 
 def normalize_data(data):
