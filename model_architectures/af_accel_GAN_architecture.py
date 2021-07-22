@@ -2,6 +2,8 @@ import tensorflow.keras as keras
 from tensorflow import cos as cos
 from tensorflow.keras import layers
 
+from keras_gan import Autoencoder
+
 
 def make_af_accel_discriminator(vector_size, summary=False, data_type='float32'):
     discriminator = keras.Sequential(
@@ -168,3 +170,46 @@ def make_conditional_af_accel_generator(latent_dimension, data_size, num_frequen
         print(generator.summary())
         print(generator.output_shape)
     return generator
+
+
+def make_fcc_autoencoder(vector_size, latent_dimension, summary=False, data_type='float32'):
+    encoder = keras.Sequential([
+        # layers.Dense(256, 'relu', input_shape=(vector_size,)),
+        # layers.Dense(256, 'relu', dtype=data_type),
+        # layers.Dense(128, 'relu', dtype=data_type),
+        # layers.Dense(latent_dimension, 'tanh', dtype=data_type)
+
+        layers.Dense(latent_dimension, activation='relu', input_shape=(vector_size,))
+    ])
+    decoder = keras.Sequential([
+        # layers.Dense(128, 'relu', input_shape=(latent_dimension,)),
+        # layers.Dense(256, 'relu', dtype=data_type),
+        # layers.Dense(256, 'relu', dtype=data_type),
+        # layers.Dense(vector_size, 'tanh', dtype=data_type)
+
+        layers.Dense(vector_size, activation='tanh', input_shape=(latent_dimension,))
+    ])
+    model = Autoencoder(encoder=encoder, decoder=decoder, latent_dimension=latent_dimension)
+    if summary:
+        print(model.summary())
+    return model
+
+
+def make_cnn_autoencoder(vector_size, latent_dimension, summary=False, data_type='float32'):
+    encoder = keras.Sequential([
+        layers.Reshape((vector_size, 1), input_shape=(vector_size,)),
+        layers.Conv1D(32, 3, strides=2, padding='same', activation='relu'),
+        layers.Conv1D(32, 3, strides=2, padding='same', activation='relu'),
+        layers.Conv1D(1, 3, strides=2, padding='same', activation='relu')
+    ])
+    decoder = keras.Sequential([
+        layers.Conv1DTranspose(32, 3, strides=2, padding='same', activation='relu'),
+        layers.Conv1DTranspose(32, 3, strides=2, padding='same', activation='relu'),
+        layers.Conv1DTranspose(1, 3, strides=2, padding='same', activation='tanh'),
+        layers.Reshape((vector_size,))
+    ])
+    model = Autoencoder(encoder=encoder, decoder=decoder, latent_dimension=latent_dimension)
+    if summary:
+        print(encoder.summary())
+        print(decoder.summary())
+    return model
