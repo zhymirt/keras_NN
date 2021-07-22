@@ -10,60 +10,73 @@ from AF_gan import metric_fft_score, normalize_data
 from af_accel_GAN import load_data_files, prepare_data
 from keras_data import data_to_dataset
 from keras_gan import WGAN
+from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator
 
 
 def model_builder(hp):
     latent_dimension, vector_size = 256, 4000
     # d_hp_units = [hp.Int('d_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(10)]
     # d_hp_units = [hp.Choice('d_unit_choice_{}'.format(idx), values=[8, 16, 32, 64, 128], default=32) for idx in range(10)]
-    discriminator = keras.Sequential(
-    [
-        layers.Reshape((vector_size, 1), input_shape=(vector_size,)),
-        layers.Conv1D(32, 5, strides=5, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 5, strides=5, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(64, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        # layers.Conv1D(32, 3, strides=2, padding='same'),
-        # layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(64, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        # layers.Conv1D(64, 3, 1, padding='valid'),
-        # layers.LeakyReLU(alpha=0.2),
-        # layers.Conv1D(256, 3, 1, padding='valid'),
-        # layers.LeakyReLU(alpha=0.2),
-        layers.Flatten(),
-        layers.Dense(1)
-    ],
-    name="discriminator",
-    )
+    # discriminator = keras.Sequential(
+    # [
+    #     layers.Reshape((vector_size, 1), input_shape=(vector_size,)),
+    #     layers.Conv1D(32, 5, strides=5, padding='same'),
+    #     layers.LeakyReLU(alpha=0.2),
+    #     layers.Conv1D(32, 5, strides=5, padding='same'),
+    #     layers.LeakyReLU(alpha=0.2),
+    #     layers.Conv1D(32, 3, strides=2, padding='same'),
+    #     layers.LeakyReLU(alpha=0.2),
+    #     layers.Conv1D(32, 3, strides=2, padding='same'),
+    #     layers.LeakyReLU(alpha=0.2),
+    #     layers.Conv1D(64, 3, strides=2, padding='same'),
+    #     layers.LeakyReLU(alpha=0.2),
+    #     # layers.Conv1D(32, 3, strides=2, padding='same'),
+    #     # layers.LeakyReLU(alpha=0.2),
+    #     layers.Conv1D(64, 3, strides=2, padding='same'),
+    #     layers.LeakyReLU(alpha=0.2),
+    #     # layers.Conv1D(64, 3, 1, padding='valid'),
+    #     # layers.LeakyReLU(alpha=0.2),
+    #     # layers.Conv1D(256, 3, 1, padding='valid'),
+    #     # layers.LeakyReLU(alpha=0.2),
+    #     layers.Flatten(),
+    #     layers.Dense(1)
+    # ],
+    # name="discriminator",
+    # )
+    discriminator = make_af_accel_discriminator(vector_size)
     # g_hp_units = [hp.Int('g_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(7)]
     # g_hp_units = [hp.Choice('g_unit_choice_{}'.format(idx), values=[8, 16, 32, 64, 128], default=32) for idx in range(7)]
-    mini_data, channels = 10, hp.Choice('g_channels', values=[8, 16, 32, 64])
+    mini_data, channels = 15, hp.Choice('g_channels', values=[8, 16, 32, 64])
     generator = keras.Sequential(
         [
             layers.Dense(mini_data * channels, input_shape=(latent_dimension,)),
             layers.Reshape((mini_data, channels)),
-            layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(64, 1, strides=1, padding='same'),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(64, 3, strides=1, padding='same'),
+            # layers.BatchNormalization(),
+            layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
+            layers.Conv1DTranspose(64, 3, strides=2, padding='valid'),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
             layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(16, 3, strides=2, padding='valid'),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos),
-            layers.BatchNormalization(),
-            layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype='float32'),
+            layers.Conv1DTranspose(8, 3, strides=2, padding='same'),
+            # layers.BatchNormalization(),
+            layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
+            layers.Conv1DTranspose(4, 3, strides=2, padding='same'),
+            # layers.BatchNormalization(),
+            layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
+            # layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos),
+            # layers.BatchNormalization(),
+            layers.Conv1DTranspose(2, 3, strides=2, padding='same', activation=cos),
+            # layers.BatchNormalization(),
+            layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type),
             layers.Reshape((vector_size,))
         ],
         name="generator",
@@ -77,24 +90,26 @@ def model_builder(hp):
                  )
     return wgan
 
+
 def tune_model(model_fn, obj_metric, training_data):
     tuner = kt.Hyperband(model_fn,
                          objective=kt.Objective(obj_metric, direction="min"),
                          max_epochs=32,
                          factor=3,
                          directory='keras_tuning',
-                        project_name='af_accel_tuning'
+                         project_name='af_accel_tuning'
                          )
     stop_early = tf.keras.callbacks.EarlyStopping(monitor=obj_metric, patience=5)
     tuner.search(training_data, epochs=2, callbacks=[stop_early])
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
     return best_hps, tuner
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     complete_data = load_data_files([os.path.join('../acceleration_data', name) for name in ('accel_1.csv',
-                                                                                                    'accel_2.csv',
-                                                                                                    'accel_3.csv',
-                                                                                                    'accel_4.csv')],
+                                                                                             'accel_2.csv',
+                                                                                             'accel_3.csv',
+                                                                                             'accel_4.csv')],
                                     separate_time=False)
     # full_time = complete_data[:, :, 0]
     # full_data, labels = [], []

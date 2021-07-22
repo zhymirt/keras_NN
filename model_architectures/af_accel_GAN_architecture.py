@@ -7,30 +7,34 @@ from keras_gan import Autoencoder
 
 def make_af_accel_discriminator(vector_size, summary=False, data_type='float32'):
     discriminator = keras.Sequential(
-    [
-        layers.Reshape((vector_size, 1), input_shape=(vector_size,)),
-        layers.Conv1D(32, 5, strides=5, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 5, strides=5, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(32, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(64, 3, strides=2, padding='same'),
-        layers.LeakyReLU(alpha=0.2),
-        # layers.Conv1D(32, 3, strides=2, padding='same'),
-        # layers.LeakyReLU(alpha=0.2),
-        layers.Conv1D(64, 3, strides=2, padding='valid'),
-        layers.LeakyReLU(alpha=0.2),
-        # layers.Conv1D(64, 3, 1, padding='valid'),
-        # layers.LeakyReLU(alpha=0.2),
-        # layers.Conv1D(256, 3, 1, padding='valid'),
-        # layers.LeakyReLU(alpha=0.2),
-        layers.Flatten(),
-        layers.Dense(1)
-    ],
-    name="discriminator",
+        [
+            layers.Reshape((vector_size, 1), input_shape=(vector_size,)),
+            layers.Conv1D(8, 5, strides=5, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            # layers.Conv1D(64, 5, strides=5, padding='same'),
+            # layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(8, 3, strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(16, 3, strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(32, 3, strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(64, 3, strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(64, 3, strides=2, padding='same'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(128, 3, strides=2, padding='valid'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(128, 3, strides=2, padding='valid'),
+            layers.LeakyReLU(alpha=0.2),
+            layers.Conv1D(256, 3, 1, padding='valid'),
+            layers.LeakyReLU(alpha=0.2),
+            # layers.Conv1D(512, 3, 1, padding='valid'),
+            # layers.LeakyReLU(alpha=0.2),
+            layers.Flatten(),
+            layers.Dense(1)
+        ],
+        name="discriminator",
     )
     if summary:
         discriminator.summary()
@@ -63,26 +67,38 @@ def make_af_accel_fcc_generator(latent_dimension, data_size, summary=False, data
         print(model.output_shape)
     return model
 
+
 def make_af_accel_generator(latent_dimension, data_size, summary=False, data_type='float32'):
-    mini_data, channels = 12, 32
+    mini_data, channels = 15, 64
     generator = keras.Sequential(
         [
             layers.Dense(mini_data * channels, input_shape=(latent_dimension,)),
             layers.Reshape((mini_data, channels)),
-            layers.Conv1DTranspose(128, 3, strides=2, padding='valid'),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(64, 1, strides=1, padding='same'),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(64, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(64, 3, strides=1, padding='same'),
+            # layers.BatchNormalization(),
+            layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
+            layers.Conv1DTranspose(64, 3, strides=2, padding='valid'),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
             layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(16, 3, strides=2, padding='valid'),
+            # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos),
-            layers.BatchNormalization(),
+            layers.Conv1DTranspose(8, 3, strides=2, padding='same'),
+            # layers.BatchNormalization(),
+            layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
+            layers.Conv1DTranspose(4, 3, strides=2, padding='same'),
+            # layers.BatchNormalization(),
+            layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
+            # layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos),
+            # layers.BatchNormalization(),
+            layers.Conv1DTranspose(2, 3, strides=2, padding='same', activation=cos),
+            # layers.BatchNormalization(),
             layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type),
             layers.Reshape((data_size,))
         ],
@@ -133,7 +149,8 @@ def make_conditional_af_accel_discriminator(vector_size, num_frequencies, summar
     return discriminator
 
 
-def make_conditional_af_accel_generator(latent_dimension, data_size, num_frequencies, summary=False, data_type='float32'):
+def make_conditional_af_accel_generator(latent_dimension, data_size, num_frequencies, summary=False,
+                                        data_type='float32'):
     mini_data, channels = 12, 32
     generator_input_label = keras.layers.Input(shape=(num_frequencies,))
     # generator_label_side = keras.layers.Embedding(num_frequencies, 50)(generator_input_label)
