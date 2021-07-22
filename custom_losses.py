@@ -16,6 +16,9 @@ def wasserstein_loss_fn(y_true, y_pred):
 def wasserstein_metric_fn(y_true, y_pred):
     return tf.reduce_mean(y_pred)
 
+def ebgan_loss_fn(y_true, y_pred):
+    return tf.reduce_mean(tf.maximum(tf.zeros(shape=y_true.shape), 1e-3 - (y_true - y_pred)))
+
 class DiscriminatorWassersteinLoss(keras.losses.Loss):
     def call(self, y_true, y_pred):
         return wasserstein_loss_fn(y_true, y_pred)
