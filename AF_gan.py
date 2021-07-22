@@ -69,12 +69,14 @@ def read_file_to_arrays(filename):
 #     else:
 #         print("{} has unhandled extension".format(filename[0]))
 
+
 def signal_dict_to_list(data):
     """ Take signal dictionary and convert to list, time excluded"""
     # signal_data = [ data[val] for val in keys[1:]] # as 5 rows of 5501
     indices = [idx for idx in range(len(data['time']))]
     signal_data = list(map(lambda x: [data[key][x] for key in keys[1:]], indices))
     return signal_data  # grab all but time list and make list
+
 
 def make_dataset():
     pass
@@ -129,36 +131,6 @@ def plot_correlations(ref_data, synthetic_data):
         plt.plot(temp_synth_cross)  # , label='Cross Correlation'
         plt.title('Signal Cross Correlation')
 
-        # ax[0][idx].plot(temp_orig_auto, label='Reference Autocorrelation')
-        # ax[1][idx].plot(temp_synth_cross)  # , label='Cross Correlation'
-        # ax[0][idx].plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
-        # ax[0][idx].set_title('Signal Autocorrelations')
-        # ax[1][idx].set_title('Signal Cross Correlation')
-        # ax[0][idx].legend()
-            # ax[1][idx].legend()
-    # if ref_data.shape[0] == 1:
-    #     temp_orig_auto = signal.correlate(ref_data, ref_data)
-    #     temp_synth_cross = signal.correlate(ref_data, synthetic_data)
-    #     temp_synth_auto = signal.correlate(synthetic_data, synthetic_data)
-    #     ax[0].plot(temp_orig_auto, label='Reference Autocorrelation')
-    #     ax[1].plot(temp_synth_cross)  # , label='Cross Correlation'
-    #     ax[0].plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
-    #     ax[0].set_title('Signal Autocorrelations')
-    #     ax[1].set_title('Signal Cross Correlation')
-    #     ax[0].legend()
-    # else:
-    #     for idx, (ref_signal, synthetic_signal) in enumerate(zip(ref_data, synthetic_data)):
-    #         temp_orig_auto = signal.correlate(ref_signal, ref_signal)
-    #         temp_synth_cross = signal.correlate(ref_signal, synthetic_signal)
-    #         temp_synth_auto = signal.correlate(synthetic_signal, synthetic_signal)
-    #         ax[0][idx].plot(temp_orig_auto, label='Reference Autocorrelation')
-    #         ax[1][idx].plot(temp_synth_cross)  # , label='Cross Correlation'
-    #         ax[0][idx].plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
-    #         ax[0][idx].set_title('Signal Autocorrelations')
-    #         ax[1][idx].set_title('Signal Cross Correlation')
-    #         ax[0][idx].legend()
-            # ax[1][idx].legend()
-
 
 def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
     print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, data.ndim))
@@ -210,17 +182,6 @@ def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
         plt.savefig(save_path)
     if show:
         plt.show()
-    # for idx in range(len(save_paths)):
-    #     y_values = list_y_values[idx]
-    #     print(y_values)
-    #     print(y_values.shape)
-    #     plt.plot(x_values, y_values)
-    #     plt.title(label=save_path.split('/')[-1] + save_paths[idx])
-    #     if save and save_path:
-    #         plt.savefig(save_path + save_paths[idx])
-    #     if show:
-    #         plt.show()
-    #     plt.close()
 
 
 def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], amplitudes=[1], h_offsets=[0],
@@ -236,6 +197,7 @@ def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], a
                                                                 r_amplitudes, r_frequencies, r_h_offsets, r_v_offsets)]
     # signal = amplitude * np.sin(2 * np.pi * frequency * time)
     return signals
+
 
 def get_auto_correlate_score(dataset, synth):
     # Only works for synthesized of size 1 for now
@@ -253,7 +215,7 @@ def get_cross_correlate_score(dataset, synth):
     correlates = []
     for d_sample, s_sample in zip(dataset, synth):
         correlate = signal.correlate(d_sample, s_sample)
-        print(correlate.shape)
+        # print(correlate.shape)
         correlates.append(np.max(correlate))
     # correlate = signal.correlate(dataset, synth)
     correlates = np.asarray(correlates)
@@ -263,35 +225,17 @@ def get_cross_correlate_score(dataset, synth):
 
 def get_fft_score(dataset, synth):
     # Get ffts
-    # print('Function start')
     synth_fft, data_fft = scipy.fft.fft(np.array(synth)), scipy.fft.fft(np.array(dataset))
-    # print('Synth FFT shape: {}, Data FFT Shape: {}'.format(synth_fft.shape, data_fft.shape))
     min_diffs = list()
     for synth_obj in synth_fft:
         min_diff = 1e99
         for data_obj in data_fft:
             diff = np.real(data_obj - synth_obj)
-            # print('Difference: {}'.format(diff))
             diff = np.square(diff)
-            # print('Squared: {}'.format((diff < 0.0).any()))
-            # print('Squared shape: {}'.format(diff.shape))
-            # diff = np.sum(diff, axis=1)
-            # print('Summed shape: {}'.format(diff.shape))
             diff = np.average(diff)
-            # print('Average shape: {}'.format(diff.shape))
-            # print('Average: {}'.format(diff))
-            # diff = np.average(np.square(data_fft[data_obj] - synth_fft))
-            # print('Total squared difference: {}, Current minimum: {}'.format(diff, min_diff))
             min_diff = min(min_diff, diff)
         min_diffs.append(min_diff)
-    # min_diff_one_loop = np.array(min_diff_one_loop)
-    min_diffs = np.sqrt(np.real(min_diffs))  # .astype('float32')
-    # min_diffs = np.sqrt(np.array(min_diffs))
-    # print(min_diffs.shape)
-    # print(min_diff_one_loop.shape)
-    # print(np.average(min_diff_one_loop))
-    # print(np.average(min_diffs))
-    # print('Function end')
+    min_diffs = np.sqrt(np.real(min_diffs))
     return np.average(min_diffs)
 
 
