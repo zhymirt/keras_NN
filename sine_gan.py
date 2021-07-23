@@ -128,7 +128,7 @@ if __name__ == '__main__':
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
     callback_list = [checkpoint, tb]  # [etesnarly_stop, checkpoint]
-    benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=0.05, frequency=randint(1, 1)) for _ in
+    benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=1, frequency=randint(1, 5)) for _ in
                    range(int(data_size))]  # generate 100 points of sine wave
     # for idx in range(2):
     #     plot_sine(benign_data[idx], show=True)
