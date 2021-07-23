@@ -2,7 +2,7 @@ from math import sqrt
 from statistics import mean
 import numpy as np
 import tensorflow as tf
-
+import datetime
 from matplotlib import pyplot as plt
 
 def std_dev(vector):
@@ -41,8 +41,15 @@ def load_data(path):
     data = np.load(path)
     return data
 
+
+def get_date_string():
+    return datetime.date.today()
+
 # def save_data(path, data, compress=False):
 #     if compress:
 #         np.savez()
 #     else:
 #         np.save(path, data)
+
+# if __name__=='__main__':
+#     print(get_date_string())
