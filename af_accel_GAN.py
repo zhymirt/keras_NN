@@ -153,7 +153,7 @@ if __name__ == '__main__':
             generator = make_conditional_af_accel_generator(latent_dimension, data_size, num_tests)
             cwgan = cWGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
             cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
+                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                           metrics=[metric_fft_score, 'accuracy']
                           )
             cwgan.set_train_epochs(5, 1)
@@ -167,8 +167,8 @@ if __name__ == '__main__':
             cwgan.fit((normalized, new_labels), epochs=epochs, batch_size=batch_size,
                       callbacks=[fft_callback(), early_stop])
             # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
-            generator.save('./models/conditional_af_accel_generator')
-            discriminator.save('./models/conditional_af_accel_discriminator')
+            # generator.save('./models/conditional_af_accel_generator')
+            # discriminator.save('./models/conditional_af_accel_discriminator')
             rp = RecurrencePlot()
             eval_size = 64
             eval_labels = np.random.randint(0, 1, (eval_size, num_tests))
@@ -188,7 +188,7 @@ if __name__ == '__main__':
                           normalized[idx + 1], show=False, save=False,
                           save_path='./results/AF_5_23_21_')
             prediction = generator.predict((tf.random.normal(shape=(1, latent_dimension)),
-                                            tf.constant(mlb.transform([[1, 3, 5]]), dtype=data_type)))
+                                            tf.constant(mlb.transform([[1, 3]]), dtype=data_type)))
             plot_data(full_time[0], prediction,
                       normalized[idx + 1], show=False, save=False,
                       save_path='./results/AF_5_23_21_')
@@ -227,8 +227,8 @@ if __name__ == '__main__':
                                             tf.random.normal(shape=(64, latent_dimension))))])
             plt.show()
             # Saving models
-            generator.save('models/af_accel_generator_full_new')
-            discriminator.save('models/af_accel_discriminator_full_new')
+            # generator.save('models/af_accel_generator_full_new')
+            # discriminator.save('models/af_accel_discriminator_full_new')
             rp = RecurrencePlot()
             prediction = generator.predict(tf.random.normal(shape=(64, latent_dimension)))
             # recurrence difference plot

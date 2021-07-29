@@ -69,18 +69,18 @@ def make_af_accel_fcc_generator(latent_dimension, data_size, summary=False, data
 
 
 def make_af_accel_generator(latent_dimension, data_size, summary=False, data_type='float32'):
-    mini_data, channels = 15, 64
+    mini_data, channels = 15, 32
     generator = keras.Sequential(
         [
             layers.Dense(mini_data * channels, input_shape=(latent_dimension,)),
             layers.Reshape((mini_data, channels)),
-            layers.Conv1DTranspose(64, 1, strides=1, padding='same'),
+            layers.Conv1DTranspose(32, 1, strides=1, padding='same'),
             # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(64, 3, strides=1, padding='same'),
+            layers.Conv1DTranspose(32, 3, strides=1, padding='same'),
             # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
-            layers.Conv1DTranspose(64, 3, strides=2, padding='valid'),
+            layers.Conv1DTranspose(32, 3, strides=2, padding='valid'),
             # layers.BatchNormalization(),
             layers.ReLU(),  # layers.LeakyReLU(alpha=0.2),
             layers.Conv1DTranspose(32, 3, strides=2, padding='same'),
@@ -151,33 +151,66 @@ def make_conditional_af_accel_discriminator(vector_size, num_frequencies, summar
 
 def make_conditional_af_accel_generator(latent_dimension, data_size, num_frequencies, summary=False,
                                         data_type='float32'):
-    mini_data, channels = 12, 32
+    mini_data, channels = 5, 64
     generator_input_label = keras.layers.Input(shape=(num_frequencies,))
     # generator_label_side = keras.layers.Embedding(num_frequencies, 50)(generator_input_label)
-    generator_label_side = layers.Dense(mini_data * channels)(generator_input_label)
-    generator_label_side = layers.ReLU()(generator_label_side)
-    generator_label_side = layers.Reshape((mini_data, channels))(generator_label_side)
+    # generator_label_side = layers.Dense(mini_data * channels)(generator_input_label)
+    # generator_label_side = layers.ReLU()(generator_label_side)
+    # generator_label_side = layers.Reshape((mini_data, channels))(generator_label_side)
 
     generator_vector_input = layers.Input((latent_dimension,))
-    generator_vector_side = layers.Dense(mini_data * channels)(generator_vector_input)
-    generator_vector_side = layers.Reshape((mini_data, channels))(generator_vector_side)
+    # generator_vector_side = layers.Dense(mini_data * channels)(generator_vector_input)
+    # generator_vector_side = layers.Reshape((mini_data, channels))(generator_vector_side)
 
-    generator = layers.Concatenate()([generator_label_side, generator_vector_side])
-    generator = layers.Conv1DTranspose(64, 3, strides=2, padding='valid')(generator)
-    generator = layers.BatchNormalization()(generator)
-    generator = layers.ReLU()(generator)
-    generator = layers.Conv1DTranspose(64, 3, strides=2, padding='same')(generator)
-    generator = layers.BatchNormalization()(generator)
-    generator = layers.ReLU()(generator)
+    generator = layers.Concatenate()([generator_input_label, generator_vector_input])
+    generator = layers.Dense(mini_data * channels)(generator)
+    generator = layers.Reshape((mini_data, channels))(generator)
+
+    # generator = layers.Concatenate()([generator_label_side, generator_vector_side])
+    generator = layers.Conv1DTranspose(64, 3, strides=3, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator)
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(64, 1, strides=1, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator)
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(64, 3, strides=1, padding='same')(generator)
+    # # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(32, 3, strides=2, padding='valid')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
     generator = layers.Conv1DTranspose(32, 3, strides=2, padding='same')(generator)
-    generator = layers.BatchNormalization()(generator)
-    generator = layers.ReLU()(generator)
-    generator = layers.Conv1DTranspose(32, 3, strides=2, padding='same')(generator)
-    generator = layers.BatchNormalization()(generator)
-    generator = layers.ReLU()(generator)
-    generator = layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos)(generator)
-    generator = layers.BatchNormalization()(generator)
-    generator = layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type)(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(16, 3, strides=2, padding='valid')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(16, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(16, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    # generator = layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos)(generator
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.Conv1DTranspose(16, 3, strides=2, padding='same', activation=cos, use_bias=False)(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', use_bias=False, dtype=data_type)(generator)
+    # generator = layers.Conv1DTranspose(64, 3, strides=2, padding='valid')(generator)
+    # generator = layers.BatchNormalization()(generator)
+    # generator = layers.ReLU()(generator)
+    # generator = layers.Conv1DTranspose(64, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator)
+    # generator = layers.ReLU()(generator)
+    # generator = layers.Conv1DTranspose(32, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator)
+    # generator = layers.ReLU()(generator)
+    # generator = layers.Conv1DTranspose(32, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator)
+    # generator = layers.ReLU()(generator)
+    # generator = layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos)(generator)
+    # generator = layers.BatchNormalization()(generator)
+    # generator = layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type)(generator)
     generator = layers.Reshape((data_size,))(generator)
 
     generator = keras.Model(inputs=(generator_vector_input, generator_input_label), outputs=generator,
