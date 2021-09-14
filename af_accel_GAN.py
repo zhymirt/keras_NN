@@ -1,11 +1,13 @@
 import os
 import numpy as np
-import scipy.stats
+import scipy
+# import scipy.stats
 import tensorflow as tf
 
 from keras.callbacks import EarlyStopping, CSVLogger
 from matplotlib import pyplot as plt
 from pyts.image import RecurrencePlot
+from sklearn import preprocessing
 from tensorflow import keras
 from sklearn.preprocessing import MultiLabelBinarizer
 from typing import List
@@ -88,7 +90,7 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
 
 
 def average_wasserstein(arr_1, arr_2):
-    """" Calculate average wasserstein distance between two arrays."""
+    """ Calculate average wasserstein distance between two arrays."""
     arr_1, arr_2 = np.asarray(arr_1), np.asarray(arr_2)
     # print('Array shapes: {}, {}'.format(arr_1.shape, arr_2.shape))
     if arr_1.ndim == 1:
