@@ -165,8 +165,9 @@ if __name__ == '__main__':
             new_labels = mlb.fit_transform(labels)
             print('Classes: {}'.format(mlb.classes_))
             print('labels shape: {}, new labels shape: {}'.format(labels.shape, new_labels.shape))
-            normalized = normalized.repeat(1e3, axis=0)  # 1e4
-            new_labels = new_labels.repeat(1e3, axis=0)
+            repeat = int(4e3)
+            normalized = normalized.repeat(repeat, axis=0)  # 1e4
+            new_labels = new_labels.repeat(repeat, axis=0)
             num_tests = 4
             discriminator = make_conditional_af_accel_discriminator(data_size, num_tests)
             generator = make_conditional_af_accel_generator(latent_dimension, data_size, num_tests)
@@ -178,7 +179,7 @@ if __name__ == '__main__':
             cwgan.set_train_epochs(5, 1)
             temp_label = mlb.transform([(1, 3)])
             generator.predict((tf.zeros(shape=(1, latent_dimension)), tf.constant(temp_label)))
-            early_stop = EarlyStopping(monitor='metric_fft_score', mode='min', min_delta=1e-2, verbose=1, patience=5,
+            early_stop = EarlyStopping(monitor='wasserstein_score', mode='min', min_delta=1e-6, verbose=1, patience=5,
                                        restore_best_weights=True)
             print('FFT Score before training: {}'.format(get_fft_score(normalized[0:128], generator.predict(
                 (tf.random.normal(shape=(1, latent_dimension)),
@@ -186,8 +187,8 @@ if __name__ == '__main__':
             cwgan.fit((normalized, new_labels), epochs=epochs, batch_size=batch_size,
                       callbacks=[fft_callback(), early_stop])
             # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
-            # generator.save('./models/conditional_af_accel_generator')
-            # discriminator.save('./models/conditional_af_accel_discriminator')
+            # generator.save('./models/conditional_af_accel_generator_v3')
+            # discriminator.save('./models/conditional_af_accel_discriminator_v3')
             rp = RecurrencePlot()
             eval_size = 64
             eval_labels = np.random.randint(0, 1, (eval_size, num_tests))
