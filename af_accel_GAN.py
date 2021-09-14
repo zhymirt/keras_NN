@@ -244,7 +244,7 @@ if __name__ == '__main__':
             plot_data(full_time[0], prediction[0:4], normalized[0:4], show=True, save=False,
                       save_path='./results/AF_5_23_21_')
     if mode == 'ebgan':
-        norm_repeat = normalized.repeat(3e3, axis=0)  # 1e4
+        norm_repeat = normalized.repeat(4e3, axis=0)  # 1e4
         ae_early_stop = EarlyStopping(monitor='val_loss', mode='min', min_delta=1e-8, verbose=1, patience=3,
                                        restore_best_weights=True)
         eb_early_stop = EarlyStopping(monitor='Reconstruction error', mode='min', min_delta=1e-12, verbose=1, patience=3,
@@ -254,22 +254,22 @@ if __name__ == '__main__':
         dataset = data_to_dataset(normalized)
         autoencoder.compile(loss=tf.keras.losses.mean_squared_error, optimizer='adam')
         autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
-                        callbacks=[ae_early_stop])
-        plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
-                  save_path='./results/AF_5_23_21_')
-
+                        callbacks=[ae_early_stop], shuffle=True)
+        # plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
+        #           save_path='./results/AF_5_23_21_')
+        print("Training generator...")
 
         # Use autoencoder loss as gan loss function
         generator = make_af_accel_generator(latent_dimension, data_size, data_type=data_type)
         # generator = make_af_accel_fcc_generator(latent_dimension, data_size, data_type=data_type)
         ebgan = EBGAN(discriminator=autoencoder, generator=generator, latent_dim=latent_dimension)
         ebgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-                    g_optimizer=keras.optimizers.Adam(learning_rate=0.0008),
+                    g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                     d_loss_fn=tf.keras.losses.mean_squared_error,
                     g_loss_fn=tf.keras.losses.mean_squared_error,
                      metrics=[metric_fft_score, tf_avg_wasserstein]
                      )
-        ebgan.fit(norm_repeat, epochs=2, batch_size=batch_size, shuffle=True) # , callbacks=[eb_early_stop]
+        ebgan.fit(norm_repeat, epochs=64, batch_size=batch_size, shuffle=True) # , callbacks=[eb_early_stop]
         # Saving models
         # generator.save('models/af_accel_generator_full')
         # discriminator.save('models/af_accel_discriminator_full')
