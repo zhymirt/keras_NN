@@ -243,6 +243,7 @@ class Autoencoder(keras.Model):
 
 class EBGAN(GAN):
     """ Energy Based GAN."""
+
     def train_step(self, real_images):
         if isinstance(real_images, tuple):
             real_images = real_images[0]
@@ -264,6 +265,8 @@ class EBGAN(GAN):
                 # g_loss = self.g_loss_fn(labels, reconstruction_error)
                 synthetic = self.generator(data)
                 g_loss = self.g_loss_fn(self.discriminator(synthetic), synthetic)
+                val_loss = self.regularizer(synthetic)
+                g_loss += val_loss
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
         return g_loss
@@ -271,6 +274,22 @@ class EBGAN(GAN):
     def get_reconstruction_error(self, x):
         """ Return loss function value between input and discriminator's reconstruction attempt."""
         return self.d_loss_fn(self.discriminator(x), x)
+
+    def regularizer(self, data):
+        with tf.GradientTape() as gp_tape:
+            gp_tape.watch(data)
+            pred = self.discriminator.encoder(data)
+        grads = gp_tape.gradient(pred, [data])[0]
+        batch_size = tf.cast(tf.shape(data)[0], data.dtype)
+        sum_loss = 0.0
+        length = grads.shape[0]
+        for a in range(length):
+            for b in range(length):
+                if a != b:
+                    sim = tf.square(tf.keras.losses.cosine_similarity(grads[a], grads[b]))
+                    sum_loss += sim
+        reg_loss = sum_loss / (length * (length - 1))
+        return reg_loss
 
 
 class log_images_callback(tf.keras.callbacks.Callback):
