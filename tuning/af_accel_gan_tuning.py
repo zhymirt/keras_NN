@@ -106,7 +106,7 @@ def tune_model(model_fn, obj_metric, training_data):
 
 
 if __name__ == '__main__':
-    complete_data = load_data_files([os.path.join('../acceleration_data', name) for name in ('accel_1.csv',
+    complete_data = load_data_files([os.path.join('../../acceleration_data', name) for name in ('accel_1.csv',
                                                                                              'accel_2.csv',
                                                                                              'accel_3.csv',
                                                                                              'accel_4.csv')],
