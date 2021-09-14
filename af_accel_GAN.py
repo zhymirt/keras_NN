@@ -201,16 +201,15 @@ if __name__ == '__main__':
             print(get_fft_score(normalized[0:128], prediction[0:64]))  # time,
             for idx in range(num_tests):
                 print('Current test: {}'.format(idx + 1))
-                prediction = generator.predict((tf.random.normal(shape=(1, latent_dimension)),
-                                                tf.constant(mlb.transform([[idx + 1]]), dtype=data_type)))
-                plot_data(full_time[0], prediction,
-                          normalized[idx + 1], show=False, save=False,
+                prediction = generator.predict((tf.random.normal(shape=(4, latent_dimension)),
+                                                tf.constant(mlb.transform([[idx + 1]]*4), dtype=data_type)))
+                plot_data(full_time[idx], prediction,
+                          full_data[idx * num_tests: (idx * num_tests + 4)], show=False, save=False,
                           save_path='./results/AF_5_23_21_')
             prediction = generator.predict((tf.random.normal(shape=(1, latent_dimension)),
                                             tf.constant(mlb.transform([[1, 3]]), dtype=data_type)))
-            plot_data(full_time[0], prediction,
-                      normalized[idx + 1], show=False, save=False,
-                      save_path='./results/AF_5_23_21_')
+            plot_data(full_time[0], prediction, normalized[0], show=False,
+                      save=False, save_path='./results/AF_5_23_21_')
 
             plt.show()
         else:
