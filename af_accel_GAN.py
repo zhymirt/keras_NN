@@ -73,19 +73,33 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     full_time = complete[:, :, 0]
     full_data, labels = [], []
     print('Full time shape: {}'.format(full_time.shape))
-    for example_set in complete.transpose((0, 2, 1)):
-        for test_num, test in enumerate(example_set[1:5]):
+    if complete.ndim == 2:
+        for test_num, test in enumerate(complete.transpose((1, 0))[1:5]):
             # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
             # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
             labels.append([test_num + 1])
             full_data.append(test)
+    elif complete.ndim == 3:
+        for example_set in complete.transpose((0, 2, 1)):
+            for test_num, test in enumerate(example_set[1:5]):
+                # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
+                # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
+                labels.append([test_num + 1])
+                full_data.append(test)
+    else:
+        print("Cannot complete")
+        return None
     full_data, labels = np.array(full_data), np.array(labels)
     returned_values['times'] = full_time
     returned_values['data'] = full_data
     if return_labels:
         returned_values['labels'] = labels
     if scaling is not None and scaling == 'normalize':
-        returned_values['normalized'], returned_values['scalars'] = normalize_data(full_data)
+        returned_values['normalized'], returned_values['scalars'] = preprocessing.normalize(full_data, norm='max', axis=1, return_norm=True) # normalize_data(full_data)
+    # elif scaling == 'minmax':
+    #     preprocessing.minmax_scale
+    elif scaling == 'standardize':
+        returned_values['normalized'] = preprocessing.scale(full_data, axis=1)
     return returned_values
 
 
@@ -119,26 +133,29 @@ def plot_wasserstein_histogram(data):
 
 
 if __name__ == '__main__':
-    latent_dimension, data_type, epochs, batch_size, conditional, mode = 128, 'float32', 64, 32, True, 'standard'
+    latent_dimension, data_type, epochs, batch_size, conditional, mode = 128, 'float32', 64, 32, True, 'ebgan'
+    folder_name, file_names = '../acceleration_data', ['accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv']
     # time, data = load_data('../acceleration_data/accel_1.csv')
     # print('Time shape: {}, Data shape: {}'.format(time.shape, data.shape))
-    complete_data = load_data_files([os.path.join('../acceleration_data', name) for name in ('accel_1.csv',
-                                                                                             'accel_2.csv',
-                                                                                             'accel_3.csv',
-                                                                                             'accel_4.csv')],
-                                    separate_time=False)
+    complete_data = load_data_files([os.path.join(folder_name, name) for name in file_names], separate_time=False)
     print('Complete shape: {}'.format(complete_data.shape))
     full_time = complete_data[:, :, 0]
     full_data, labels = [], []
     print('Full time shape: {}'.format(full_time.shape))
-    data_dict = prepare_data(complete_data, scaling='normal', return_labels=True)
+    data_dict = prepare_data(complete_data, scaling='normalize', return_labels=True)
     full_data, labels = np.array(data_dict['data']), np.array(data_dict['labels'])
     # exit()
     # print('Complete shape: {}'.format(complete_data.shape))
     # full_time, full_data = complete_data[0:1, :, 2:3], complete_data[1:, :, 2:3]
     print('Full Time shape: {}, Full Data shape: {}'.format(full_time.shape, full_data.shape))
     data_size = full_data.shape[1]
-    normalized, scalars = normalize_data(full_data)
+    normalized, scalars = data_dict['normalized'], data_dict['scalars']  # normalize_data(full_data)
+    # print(normalized.shape)
+    # for normal in normalized:
+    #     plt.figure()
+    #     plt.plot(full_time[0], normal)
+    # plt.show()
+    # exit()
     # unnormalized = denormalize_data(normalized, scalars)
     # diff = np.abs(unnormalized - full_data)
     # print('Absolute Differences: min - {} max - {} total - {}'.format(diff.min(), diff.max(), diff.sum()))
