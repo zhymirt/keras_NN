@@ -1,6 +1,6 @@
 import os
-import cProfile
-import tensorflow.experimental.numpy as tnp
+# import cProfile
+# import tensorflow.experimental.numpy as tnp
 import scipy.fft
 import sklearn.preprocessing as preprocessing
 import numpy as np
@@ -41,6 +41,7 @@ def read_file(filename):
 
 
 def read_file_to_arrays(filename):
+    """ Read file and return time and data arrays."""
     time, data = list(), list()
     with open(filename, 'r') as tempFile:
         tempFile.readline()
@@ -83,6 +84,7 @@ def make_dataset():
 
 
 def plot_recurrence_diff(ref_data, synthetic_data, tmp_rp=None):
+    """ Take two samples of data and plot their recurrence plots."""
     # recurrence difference plot
     tmp_rp = RecurrencePlot() if tmp_rp is None else tmp_rp
     print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, synthetic_data.ndim))
@@ -109,6 +111,7 @@ def plot_recurrence_diff(ref_data, synthetic_data, tmp_rp=None):
 
 
 def plot_correlations(ref_data, synthetic_data):
+    """ Plot correlation graphs between real and generated data."""
     temp_corr_fig = plt.figure()
     # ax = temp_corr_fig.subplots(ncols=ref_data.shape[0], nrows=2, sharey=True)
     print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, synthetic_data.ndim))
@@ -182,6 +185,7 @@ def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
         plt.savefig(save_path)
     if show:
         plt.show()
+    return temp_fig
 
 
 def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], amplitudes=[1], h_offsets=[0],
@@ -224,6 +228,7 @@ def get_cross_correlate_score(dataset, synth):
 
 
 def get_fft_score(dataset, synth):
+    """ Return FFT score."""
     # Get ffts
     synth_fft, data_fft = scipy.fft.fft(np.array(synth)), scipy.fft.fft(np.array(dataset))
     min_diffs = list()
