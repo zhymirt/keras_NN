@@ -293,9 +293,10 @@ class EBGAN(GAN):
 
 
 class log_images_callback(tf.keras.callbacks.Callback):
-    def __init__(self, image_shape: tuple, num_images: int=1):
+    def __init__(self, image_shape: tuple, num_images: int = 1):
         super().__init__(self)
-        self.noise_vectors = tf.random.normal(shape=((num_images,)+image_shape))
+        self.noise_vectors = tf.random.normal(shape=((num_images,) + image_shape))
+
     def on_epoch_end(self, epoch, logs=None):
         pass
 
