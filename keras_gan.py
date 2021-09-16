@@ -291,6 +291,16 @@ class EBGAN(GAN):
         reg_loss = sum_loss / (length * (length - 1))
         return reg_loss
 
+# Written by fchollet 2020 https://keras.io/examples/generative/vae/#create-a-sampling-layer
+class Sampling(layers.Layer):
+    """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
+
+    def call(self, inputs):
+        z_mean, z_log_var = inputs
+        batch = tf.shape(z_mean)[0]
+        dim = tf.shape(z_mean)[1]
+        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 class log_images_callback(tf.keras.callbacks.Callback):
     def __init__(self, image_shape: tuple, num_images: int = 1):
