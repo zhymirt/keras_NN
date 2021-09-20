@@ -14,7 +14,7 @@ from model_architectures.af_accel_GAN_architecture import make_af_accel_discrimi
 
 
 def model_builder(hp):
-    latent_dimension, vector_size = 256, 4000
+    latent_dimension, vector_size = 256, 5000
     # d_hp_units = [hp.Int('d_units_{}'.format(idx), min_value=8, max_value=128, step=8) for idx in range(10)]
     # d_hp_units = [hp.Choice('d_unit_choice_{}'.format(idx), values=[8, 16, 32, 64, 128], default=32) for idx in range(10)]
     # discriminator = keras.Sequential(
@@ -76,7 +76,7 @@ def model_builder(hp):
             # layers.BatchNormalization(),
             layers.Conv1DTranspose(2, 3, strides=2, padding='same', activation=cos),
             # layers.BatchNormalization(),
-            layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype=data_type),
+            layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', dtype='float32'),
             layers.Reshape((vector_size,))
         ],
         name="generator",
@@ -106,7 +106,7 @@ def tune_model(model_fn, obj_metric, training_data):
 
 
 if __name__ == '__main__':
-    complete_data = load_data_files([os.path.join('../acceleration_data', name) for name in ('accel_1.csv',
+    complete_data = load_data_files([os.path.join('../../acceleration_data', name) for name in ('accel_1.csv',
                                                                                              'accel_2.csv',
                                                                                              'accel_3.csv',
                                                                                              'accel_4.csv')],
@@ -125,5 +125,13 @@ if __name__ == '__main__':
     dataset = data_to_dataset(normalized, dtype='float32', batch_size=16, shuffle=True)
     # Train
     best_hps, tuner = tune_model(model_builder, 'metric_fft_score', dataset)
-    for key in best_hps:
-        print('Best {}: {}'.format(key, best_hps[key]))
+    model = tuner.hypermodel.build(best_hps)
+    print(dir(best_hps))
+    print(best_hps.values)
+    print("Discriminator and Generator learning rates: {}, {}".format(best_hps.get('d_learning_rate'),
+                                                                      best_hps.get('g_learning_rate')))
+    model.generator.summary()
+    exit()
+    history = model.fit(dataset)
+    # for key in best_hps:
+    #     print('Best {}: {}'.format(key, best_hps[key]))

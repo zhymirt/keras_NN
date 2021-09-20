@@ -101,8 +101,8 @@ if __name__=='__main__':
     #     read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
     #                                                                               'T04repeat.txt', 'T05.txt', 'T06.txt',
     #                                                                               'T07.txt', 'T08.txt']]
-    time, benign_data = np.load('../signal_data/time_np.npy'), np.concatenate(
-        [[np.load(os.path.join('../signal_data', name + '_np.npy'))] for name in ['T04',
+    time, benign_data = np.load('../../signal_data/time_np.npy'), np.concatenate(
+        [[np.load(os.path.join('../../signal_data', name + '_np.npy'))] for name in ['T04',
                                                                                   'T04repeat', 'T05', 'T06', 'T07',
                                                                                   'T08']])
     benign_data_transposed = np.transpose(benign_data, (0, 2, 1))

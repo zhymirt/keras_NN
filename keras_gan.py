@@ -103,8 +103,9 @@ class WGAN(GAN):
         generated = self.generator(random_latent_vectors)
         real_labels, fakes_labels = tf.ones((batch_size, 1), dtype=data_type), -tf.ones((batch_size, 1),
                                                                                         dtype=data_type)
-        random_noise = 0 # tf.random.normal(shape=(tf.shape(real_images)), stddev=1e-12)
-        d_loss = self.train_discriminator(real_labels, fakes_labels, real_images + random_noise, generated, data_type=data_type)
+        random_noise = 0  # tf.random.normal(shape=(tf.shape(real_images)), stddev=1e-12)
+        d_loss = self.train_discriminator(real_labels, fakes_labels, real_images + random_noise, generated,
+                                          data_type=data_type)
         g_loss = super().train_generator(real_labels, random_latent_vectors, data_type=data_type)
 
         random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim), dtype=data_type)
@@ -142,7 +143,7 @@ class WGAN(GAN):
         # Get the interpolated image
         # alpha = tf.random.normal([batch_size, 1, 1, 1], 0.0, 1.0)
         # diff = fake_images - real_images
-        interpolated = real_images # + alpha * diff
+        interpolated = real_images  # + alpha * diff
 
         with tf.GradientTape() as gp_tape:
             gp_tape.watch(interpolated)
@@ -156,6 +157,7 @@ class WGAN(GAN):
         gp = tf.reduce_mean((norm - 1.0) ** 2)
         return gp
 
+
 class cWGAN(WGAN):
     def train_step(self, data):
         # Prepare Data
@@ -167,6 +169,7 @@ class cWGAN(WGAN):
         generated = self.generator((random_latent_vectors, class_labels))
         real_labels, fakes_labels = tf.ones((batch_size, 1), dtype=data_type), -tf.ones((batch_size, 1),
                                                                                         dtype=data_type)
+        lamb = 10
         # Compute Loss
         d_loss = self.train_discriminator(real_labels, fakes_labels, real_images, generated, class_labels,
                                           data_type=data_type)
@@ -189,11 +192,8 @@ class cWGAN(WGAN):
                 d_loss = self.d_loss_fn(tf.concat((real_labels, fake_labels), 0), tf.concat(
                     (self.discriminator((real_data, class_labels)), self.discriminator((fake_data, class_labels))),
                     0))
-                r = tf.random.uniform(shape=[1], dtype=data_type)
-                x_hat = r * real_data + (1 - r) * fake_data
-                val = lamb * ((abs(tf.reduce_mean(x_hat) - tf.reduce_mean(
-                    self.discriminator((x_hat, class_labels))))) ** 2)
-                d_loss += val
+                val = self.gradient_penalty(real_data=real_data, fake_data=fake_data, labels=class_labels)
+                d_loss = d_loss + (val * lamb)
             grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
             self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
         return d_loss
@@ -208,22 +208,22 @@ class cWGAN(WGAN):
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
         return g_loss
 
-    def gradient_penalty(self, real_images, labels):
+    def gradient_penalty(self, real_data, fake_data, labels):
         """ Calculates the gradient penalty.
          found in keras wgan_gp, modified
         This loss is calculated on an interpolated image
         and added to the discriminator loss.
         """
-        batch_size = tf.shape(real_images)[0]
+        batch_size = tf.shape(real_data)[0]
         # Get the interpolated image
         # alpha = tf.random.normal([batch_size, 1, 1, 1], 0.0, 1.0)
         # diff = fake_images - real_images
-        interpolated = real_images  # + alpha * diff
+        interpolated = real_data  # + alpha * diff
 
         with tf.GradientTape() as gp_tape:
             gp_tape.watch(interpolated)
             # 1. Get the discriminator output for this interpolated image.
-            pred = self.discriminator((interpolated, labels), training=True)
+            pred = self.discriminator((interpolated, labels))  # , training=True
 
         # 2. Calculate the gradients w.r.t to this interpolated image.
         grads = gp_tape.gradient(pred, [interpolated])[0]
@@ -246,6 +246,7 @@ class Autoencoder(keras.Model):
 
 class EBGAN(GAN):
     """ Energy Based GAN."""
+
     def train_step(self, real_images):
         if isinstance(real_images, tuple):
             real_images = real_images[0]
@@ -267,6 +268,8 @@ class EBGAN(GAN):
                 # g_loss = self.g_loss_fn(labels, reconstruction_error)
                 synthetic = self.generator(data)
                 g_loss = self.g_loss_fn(self.discriminator(synthetic), synthetic)
+                val_loss = self.regularizer(synthetic)
+                g_loss += val_loss
             grads = tape.gradient(g_loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
         return g_loss
@@ -275,11 +278,38 @@ class EBGAN(GAN):
         """ Return loss function value between input and discriminator's reconstruction attempt."""
         return self.d_loss_fn(self.discriminator(x), x)
 
+    def regularizer(self, data):
+        with tf.GradientTape() as gp_tape:
+            gp_tape.watch(data)
+            pred = self.discriminator.encoder(data)
+        grads = gp_tape.gradient(pred, [data])[0]
+        batch_size = tf.cast(tf.shape(data)[0], data.dtype)
+        sum_loss = 0.0
+        length = grads.shape[0]
+        for a in range(length):
+            for b in range(length):
+                if a != b:
+                    sim = tf.square(tf.keras.losses.cosine_similarity(grads[a], grads[b]))
+                    sum_loss += sim
+        reg_loss = sum_loss / (length * (length - 1))
+        return reg_loss
+
+# Written by fchollet 2020 https://keras.io/examples/generative/vae/#create-a-sampling-layer
+class Sampling(layers.Layer):
+    """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
+
+    def call(self, inputs):
+        z_mean, z_log_var = inputs
+        batch = tf.shape(z_mean)[0]
+        dim = tf.shape(z_mean)[1]
+        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 class log_images_callback(tf.keras.callbacks.Callback):
-    def __init__(self, image_shape: tuple, num_images: int=1):
+    def __init__(self, image_shape: tuple, num_images: int = 1):
         super().__init__(self)
-        self.noise_vectors = tf.random.normal(shape=((num_images,)+image_shape))
+        self.noise_vectors = tf.random.normal(shape=((num_images,) + image_shape))
+
     def on_epoch_end(self, epoch, logs=None):
         pass
 

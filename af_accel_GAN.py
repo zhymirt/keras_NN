@@ -1,11 +1,13 @@
 import os
 import numpy as np
-import scipy.stats
+import scipy
+# import scipy.stats
 import tensorflow as tf
 
 from keras.callbacks import EarlyStopping, CSVLogger
 from matplotlib import pyplot as plt
 from pyts.image import RecurrencePlot
+from sklearn import preprocessing
 from tensorflow import keras
 from sklearn.preprocessing import MultiLabelBinarizer
 from typing import List
@@ -71,24 +73,38 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     full_time = complete[:, :, 0]
     full_data, labels = [], []
     print('Full time shape: {}'.format(full_time.shape))
-    for example_set in complete.transpose((0, 2, 1)):
-        for test_num, test in enumerate(example_set[1:5]):
+    if complete.ndim == 2:
+        for test_num, test in enumerate(complete.transpose((1, 0))[1:5]):
             # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
             # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
             labels.append([test_num + 1])
             full_data.append(test)
+    elif complete.ndim == 3:
+        for example_set in complete.transpose((0, 2, 1)):
+            for test_num, test in enumerate(example_set[1:5]):
+                # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
+                # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
+                labels.append([test_num + 1])
+                full_data.append(test)
+    else:
+        print("Cannot complete")
+        return None
     full_data, labels = np.array(full_data), np.array(labels)
     returned_values['times'] = full_time
     returned_values['data'] = full_data
     if return_labels:
         returned_values['labels'] = labels
     if scaling is not None and scaling == 'normalize':
-        returned_values['normalized'], returned_values['scalars'] = normalize_data(full_data)
+        returned_values['normalized'], returned_values['scalars'] = preprocessing.normalize(full_data, norm='max', axis=1, return_norm=True) # normalize_data(full_data)
+    # elif scaling == 'minmax':
+    #     preprocessing.minmax_scale
+    elif scaling == 'standardize':
+        returned_values['normalized'] = preprocessing.scale(full_data, axis=1)
     return returned_values
 
 
 def average_wasserstein(arr_1, arr_2):
-    """" Calculate average wasserstein distance between two arrays."""
+    """ Calculate average wasserstein distance between two arrays."""
     arr_1, arr_2 = np.asarray(arr_1), np.asarray(arr_2)
     # print('Array shapes: {}, {}'.format(arr_1.shape, arr_2.shape))
     if arr_1.ndim == 1:
@@ -117,26 +133,29 @@ def plot_wasserstein_histogram(data):
 
 
 if __name__ == '__main__':
-    latent_dimension, data_type, epochs, batch_size, conditional, mode = 128, 'float32', 64, 32, True, 'standard'
+    latent_dimension, data_type, epochs, batch_size, conditional, mode = 128, 'float32', 64, 32, True, 'ebgan'
+    folder_name, file_names = '../acceleration_data', ['accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv']
     # time, data = load_data('../acceleration_data/accel_1.csv')
     # print('Time shape: {}, Data shape: {}'.format(time.shape, data.shape))
-    complete_data = load_data_files([os.path.join('../acceleration_data', name) for name in ('accel_1.csv',
-                                                                                             'accel_2.csv',
-                                                                                             'accel_3.csv',
-                                                                                             'accel_4.csv')],
-                                    separate_time=False)
+    complete_data = load_data_files([os.path.join(folder_name, name) for name in file_names], separate_time=False)
     print('Complete shape: {}'.format(complete_data.shape))
     full_time = complete_data[:, :, 0]
     full_data, labels = [], []
     print('Full time shape: {}'.format(full_time.shape))
-    data_dict = prepare_data(complete_data, scaling='normal', return_labels=True)
+    data_dict = prepare_data(complete_data, scaling='normalize', return_labels=True)
     full_data, labels = np.array(data_dict['data']), np.array(data_dict['labels'])
     # exit()
     # print('Complete shape: {}'.format(complete_data.shape))
     # full_time, full_data = complete_data[0:1, :, 2:3], complete_data[1:, :, 2:3]
     print('Full Time shape: {}, Full Data shape: {}'.format(full_time.shape, full_data.shape))
     data_size = full_data.shape[1]
-    normalized, scalars = normalize_data(full_data)
+    normalized, scalars = data_dict['normalized'], data_dict['scalars']  # normalize_data(full_data)
+    # print(normalized.shape)
+    # for normal in normalized:
+    #     plt.figure()
+    #     plt.plot(full_time[0], normal)
+    # plt.show()
+    # exit()
     # unnormalized = denormalize_data(normalized, scalars)
     # diff = np.abs(unnormalized - full_data)
     # print('Absolute Differences: min - {} max - {} total - {}'.format(diff.min(), diff.max(), diff.sum()))
@@ -146,20 +165,21 @@ if __name__ == '__main__':
             new_labels = mlb.fit_transform(labels)
             print('Classes: {}'.format(mlb.classes_))
             print('labels shape: {}, new labels shape: {}'.format(labels.shape, new_labels.shape))
-            normalized = normalized.repeat(1e3, axis=0)  # 1e4
-            new_labels = new_labels.repeat(1e3, axis=0)
+            repeat = int(4e3)
+            normalized = normalized.repeat(repeat, axis=0)  # 1e4
+            new_labels = new_labels.repeat(repeat, axis=0)
             num_tests = 4
             discriminator = make_conditional_af_accel_discriminator(data_size, num_tests)
             generator = make_conditional_af_accel_generator(latent_dimension, data_size, num_tests)
             cwgan = cWGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
             cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
+                          g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                           metrics=[metric_fft_score, 'accuracy']
                           )
             cwgan.set_train_epochs(5, 1)
             temp_label = mlb.transform([(1, 3)])
             generator.predict((tf.zeros(shape=(1, latent_dimension)), tf.constant(temp_label)))
-            early_stop = EarlyStopping(monitor='metric_fft_score', mode='min', min_delta=1e-2, verbose=1, patience=5,
+            early_stop = EarlyStopping(monitor='wasserstein_score', mode='min', min_delta=1e-6, verbose=1, patience=5,
                                        restore_best_weights=True)
             print('FFT Score before training: {}'.format(get_fft_score(normalized[0:128], generator.predict(
                 (tf.random.normal(shape=(1, latent_dimension)),
@@ -167,8 +187,8 @@ if __name__ == '__main__':
             cwgan.fit((normalized, new_labels), epochs=epochs, batch_size=batch_size,
                       callbacks=[fft_callback(), early_stop])
             # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
-            generator.save('./models/conditional_af_accel_generator')
-            discriminator.save('./models/conditional_af_accel_discriminator')
+            # generator.save('./models/conditional_af_accel_generator_v3')
+            # discriminator.save('./models/conditional_af_accel_discriminator_v3')
             rp = RecurrencePlot()
             eval_size = 64
             eval_labels = np.random.randint(0, 1, (eval_size, num_tests))
@@ -182,16 +202,15 @@ if __name__ == '__main__':
             print(get_fft_score(normalized[0:128], prediction[0:64]))  # time,
             for idx in range(num_tests):
                 print('Current test: {}'.format(idx + 1))
-                prediction = generator.predict((tf.random.normal(shape=(1, latent_dimension)),
-                                                tf.constant(mlb.transform([[idx + 1]]), dtype=data_type)))
-                plot_data(full_time[0], prediction,
-                          normalized[idx + 1], show=False, save=False,
+                prediction = generator.predict((tf.random.normal(shape=(4, latent_dimension)),
+                                                tf.constant(mlb.transform([[idx + 1]]*4), dtype=data_type)))
+                plot_data(full_time[idx], prediction,
+                          full_data[idx * num_tests: (idx * num_tests + 4)], show=False, save=False,
                           save_path='./results/AF_5_23_21_')
             prediction = generator.predict((tf.random.normal(shape=(1, latent_dimension)),
-                                            tf.constant(mlb.transform([[1, 3, 5]]), dtype=data_type)))
-            plot_data(full_time[0], prediction,
-                      normalized[idx + 1], show=False, save=False,
-                      save_path='./results/AF_5_23_21_')
+                                            tf.constant(mlb.transform([[1, 3]]), dtype=data_type)))
+            plot_data(full_time[0], prediction, normalized[0], show=False,
+                      save=False, save_path='./results/AF_5_23_21_')
 
             plt.show()
         else:
@@ -227,8 +246,8 @@ if __name__ == '__main__':
                                             tf.random.normal(shape=(64, latent_dimension))))])
             plt.show()
             # Saving models
-            generator.save('models/af_accel_generator_full_new')
-            discriminator.save('models/af_accel_discriminator_full_new')
+            # generator.save('models/af_accel_generator_full_new')
+            # discriminator.save('models/af_accel_discriminator_full_new')
             rp = RecurrencePlot()
             prediction = generator.predict(tf.random.normal(shape=(64, latent_dimension)))
             # recurrence difference plot
@@ -242,7 +261,7 @@ if __name__ == '__main__':
             plot_data(full_time[0], prediction[0:4], normalized[0:4], show=True, save=False,
                       save_path='./results/AF_5_23_21_')
     if mode == 'ebgan':
-        norm_repeat = normalized.repeat(3e3, axis=0)  # 1e4
+        norm_repeat = normalized.repeat(4e3, axis=0)  # 1e4
         ae_early_stop = EarlyStopping(monitor='val_loss', mode='min', min_delta=1e-8, verbose=1, patience=3,
                                        restore_best_weights=True)
         eb_early_stop = EarlyStopping(monitor='Reconstruction error', mode='min', min_delta=1e-12, verbose=1, patience=3,
@@ -252,22 +271,22 @@ if __name__ == '__main__':
         dataset = data_to_dataset(normalized)
         autoencoder.compile(loss=tf.keras.losses.mean_squared_error, optimizer='adam')
         autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
-                        callbacks=[ae_early_stop])
-        plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
-                  save_path='./results/AF_5_23_21_')
-
+                        callbacks=[ae_early_stop], shuffle=True)
+        # plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
+        #           save_path='./results/AF_5_23_21_')
+        print("Training generator...")
 
         # Use autoencoder loss as gan loss function
         generator = make_af_accel_generator(latent_dimension, data_size, data_type=data_type)
         # generator = make_af_accel_fcc_generator(latent_dimension, data_size, data_type=data_type)
         ebgan = EBGAN(discriminator=autoencoder, generator=generator, latent_dim=latent_dimension)
         ebgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-                    g_optimizer=keras.optimizers.Adam(learning_rate=0.0008),
+                    g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                     d_loss_fn=tf.keras.losses.mean_squared_error,
                     g_loss_fn=tf.keras.losses.mean_squared_error,
                      metrics=[metric_fft_score, tf_avg_wasserstein]
                      )
-        ebgan.fit(norm_repeat, epochs=2, batch_size=batch_size, shuffle=True) # , callbacks=[eb_early_stop]
+        ebgan.fit(norm_repeat, epochs=64, batch_size=batch_size, shuffle=True) # , callbacks=[eb_early_stop]
         # Saving models
         # generator.save('models/af_accel_generator_full')
         # discriminator.save('models/af_accel_discriminator_full')
