@@ -17,12 +17,14 @@ from keras_data import plot_data
 
 
 def generate_sine(start, end, points, amplitude=1, frequency=1):
+    """ Generates and returns vector of points for sine wave."""
     time = np.linspace(0, 2, 100)
     signal = amplitude * np.sin(2 * np.pi * frequency * time)
     return signal
 
 
 class GAN(keras.Model):
+    """ Generative Adversarial Network."""
     def __init__(self, discriminator, generator, latent_dim):
         super(GAN, self).__init__()
         self.discriminator = discriminator
@@ -90,7 +92,7 @@ class GAN(keras.Model):
 
 
 class WGAN(GAN):
-
+    """Wasserstein Generative Adversarial Network."""
     def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn, **kwargs):
         super().compile(d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, **kwargs)
 
@@ -159,6 +161,7 @@ class WGAN(GAN):
 
 
 class cWGAN(WGAN):
+    """Conditional Wasserstein Generative Adversarial Network."""
     def train_step(self, data):
         # Prepare Data
         if isinstance(data, tuple):
@@ -234,6 +237,7 @@ class cWGAN(WGAN):
 
 
 class Autoencoder(keras.Model):
+    """ Autoencoder wrapper class."""
     def __init__(self, encoder, decoder, latent_dimension):
         super(Autoencoder, self).__init__()
         self.encoder, self.decoder, self.latent_dimension = encoder, decoder, latent_dimension

@@ -29,10 +29,11 @@ def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
         :param separate_time: bool = True
         :return: np.ndarray"""
     fn_data = np.loadtxt(filename, delimiter=',', skiprows=2)
-    if separate_time:
-        return fn_data[:, 0], fn_data[:, 1:]
-    else:
-        return fn_data
+    return fn_data[:, 0], fn_data[:, 1:] if separate_time else fn_data
+    # if separate_time:
+    #     return fn_data[:, 0], fn_data[:, 1:]
+    # else:
+    #     return fn_data
 
 
 def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndarray:
@@ -49,10 +50,11 @@ def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndar
 
     """
     fn_data = np.array([load_data(name, separate_time=False) for name in filenames])
-    if separate_time:
-        return fn_data[:, :, 0], fn_data[:, :, 1:]
-    else:
-        return fn_data
+    return fn_data[:, :, 0], fn_data[:, :, 1:] if separate_time else fn_data
+    # if separate_time:
+    #     return fn_data[:, :, 0], fn_data[:, :, 1:]
+    # else:
+    #     return fn_data
 
 
 def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool = False) -> dict:
@@ -69,22 +71,24 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     dict: Contains keys ['data', 'times', 'labels', 'normalized', 'scalars']
     """
     returned_values = dict()
-    print('Complete shape: {}'.format(complete.shape))
-    full_time = complete[:, :, 0]
-    full_data, labels = [], []
-    print('Full time shape: {}'.format(full_time.shape))
+    # print('Complete shape: {}'.format(complete.shape))
+    full_time, full_data, labels = complete[:, :, 0], list(), list()
+    data_start, data_end = 1, 5
+    # full_time = complete[:, :, 0]
+    # full_data, labels = [], []
+    # print('Full time shape: {}'.format(full_time.shape))
     if complete.ndim == 2:
-        for test_num, test in enumerate(complete.transpose((1, 0))[1:5]):
+        for test_num, test in enumerate(complete.transpose((1, 0))[data_start:data_end], start=1):
             # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
             # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
-            labels.append([test_num + 1])
+            labels.append([test_num])
             full_data.append(test)
     elif complete.ndim == 3:
         for example_set in complete.transpose((0, 2, 1)):
-            for test_num, test in enumerate(example_set[1:5]):
+            for test_num, test in enumerate(example_set[data_start:data_end], start=1):
                 # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
                 # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
-                labels.append([test_num + 1])
+                labels.append([test_num])
                 full_data.append(test)
     else:
         print("Cannot complete")
@@ -103,7 +107,7 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     return returned_values
 
 
-def average_wasserstein(arr_1, arr_2):
+def average_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> float:
     """ Calculate average wasserstein distance between two arrays."""
     arr_1, arr_2 = np.asarray(arr_1), np.asarray(arr_2)
     # print('Array shapes: {}, {}'.format(arr_1.shape, arr_2.shape))
@@ -117,12 +121,12 @@ def average_wasserstein(arr_1, arr_2):
         return np.asarray(distances).mean()
 
 
-def tf_avg_wasserstein(arr_1, arr_2):
+def tf_avg_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> tf.float32:
     """ Wrap average_wasserstein function and return result."""
     return tf.py_function(average_wasserstein, (arr_1, arr_2), tf.float32)
 
 
-def plot_wasserstein_histogram(data):
+def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     """ Plot histogram for wasserstein scores of data.
         Expects list of size two containing values."""
     fig = plt.figure()
@@ -138,18 +142,17 @@ if __name__ == '__main__':
     # time, data = load_data('../acceleration_data/accel_1.csv')
     # print('Time shape: {}, Data shape: {}'.format(time.shape, data.shape))
     complete_data = load_data_files([os.path.join(folder_name, name) for name in file_names], separate_time=False)
-    print('Complete shape: {}'.format(complete_data.shape))
-    full_time = complete_data[:, :, 0]
-    full_data, labels = [], []
-    print('Full time shape: {}'.format(full_time.shape))
+    # print('Complete shape: {}'.format(complete_data.shape))
+    full_time, full_data, labels = complete_data[:, :, 0], list(), list()
+    # print('Full time shape: {}'.format(full_time.shape))
     data_dict = prepare_data(complete_data, scaling='normalize', return_labels=True)
     full_data, labels = np.array(data_dict['data']), np.array(data_dict['labels'])
     # exit()
     # print('Complete shape: {}'.format(complete_data.shape))
     # full_time, full_data = complete_data[0:1, :, 2:3], complete_data[1:, :, 2:3]
-    print('Full Time shape: {}, Full Data shape: {}'.format(full_time.shape, full_data.shape))
+    # print('Full Time shape: {}, Full Data shape: {}'.format(full_time.shape, full_data.shape))
     data_size = full_data.shape[1]
-    normalized, scalars = data_dict['normalized'], data_dict['scalars']  # normalize_data(full_data)
+    normalized, scalars = data_dict['normalized', 'scalars'] # data_dict['normalized'], data_dict['scalars']  # normalize_data(full_data)
     # print(normalized.shape)
     # for normal in normalized:
     #     plt.figure()
@@ -211,7 +214,6 @@ if __name__ == '__main__':
                                             tf.constant(mlb.transform([[1, 3]]), dtype=data_type)))
             plot_data(full_time[0], prediction, normalized[0], show=False,
                       save=False, save_path='./results/AF_5_23_21_')
-
             plt.show()
         else:
             normalized = normalized.repeat(3e3, axis=0)  # 1e4

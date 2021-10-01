@@ -32,7 +32,7 @@ def make_af_accel_discriminator(vector_size, summary=False, data_type='float32')
             # layers.Conv1D(512, 3, 1, padding='valid'),
             # layers.LeakyReLU(alpha=0.2),
             layers.Flatten(),
-            layers.Dense(1)
+            layers.Dense(1, dtype=data_type)
         ],
         name="discriminator",
     )
@@ -263,7 +263,7 @@ def make_cnn_autoencoder(vector_size, latent_dimension, summary=False, data_type
     decoder = keras.Sequential([
         layers.Conv1DTranspose(32, 3, strides=2, padding='same', activation='relu'),
         layers.Conv1DTranspose(32, 3, strides=2, padding='same', activation='relu'),
-        layers.Conv1DTranspose(1, 3, strides=2, padding='same', activation='tanh'),
+        layers.Conv1DTranspose(1, 3, strides=2, padding='same', activation='tanh', dtype=data_type),
         layers.Reshape((vector_size,))
     ])
     model = Autoencoder(encoder=encoder, decoder=decoder, latent_dimension=latent_dimension)
