@@ -1,6 +1,7 @@
 from math import sqrt
 from statistics import mean
 import numpy as np
+import scipy as sp
 import tensorflow as tf
 import datetime
 from matplotlib import pyplot as plt
@@ -21,6 +22,61 @@ def standardize(vector):
     deviation = std_dev(vector)
     return list(map(lambda x: ((x - avg) / deviation) if deviation != 0 else 0, vector))
 
+
+def abs_mean(vector: np.ndarray) -> float:
+    """ Return absolute mean of vector."""
+    return np.mean(np.abs(vector))
+
+
+def rms(vector: np.ndarray) -> float:
+    """ Return root mean square of vector."""
+    return np.sqrt(np.mean(vector ** 2))
+
+
+def skewness(vector: np.ndarray) -> float:
+    """ Return skewness of vector."""
+    mean = np.mean(vector)  # precalculate mean for speed
+    # number of points minus 1 * the standard deviation squared
+    denom = (len(vector) - 1) * np.std(vector) ** 3
+    return np.sum((vector - mean) ** 3) / denom
+
+
+def kurtosis(vector: np.ndarray) -> float:
+    """ Return kurtosis of vector."""
+    mean = np.mean(vector) # precalculate mean for speed
+    # number of points minus 1 * the standard deviation squared
+    denom = (len(vector) - 1) * np.std(vector) ** 4
+    return np.sum((vector - mean) ** 4) / denom
+
+
+def crest_factor(vector: np.ndarray) -> float:
+    """ Return crest factor of vector."""
+    return np.max(vector) / rms(vector)
+
+
+def shape_factor(vector: np.ndarray) -> float:
+    """ Return shape factor of vector."""
+    return rms(vector) / abs_mean(vector)
+
+
+def impulse_factor(vector: np.ndarray) -> float:
+    """ Return impulse factor of vector."""
+    return np.max(vector) / abs_mean(vector)
+
+def frequency_center(vector: np.ndarray) -> float:
+    """ Return frequency center of vector."""
+    fft = sp.fft.fft(vector)
+    return np.mean(fft)
+
+def root_mean_square(vector: np.ndarray) -> float:
+    """ Return root mean square frequency"""
+    fft = sp.fft.fft(vector)
+    return np.mean(np.abs(np.asarray(fft)) ** 2)
+
+def root_variance_frequency(vector: np.ndarray) -> float:
+    fft = sp.fft.fft(vector)
+    mean = np.mean(fft)
+    return np.sqrt(np.mean((fft - mean) ** 2))
 
 def plot_data(x_values, y_values, trend_data=None, show=False, save=True, save_path=''):
     """ Plot (x, y) pairs, plot secondary trendline if provided."""
