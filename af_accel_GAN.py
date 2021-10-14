@@ -302,3 +302,14 @@ if __name__ == '__main__':
             get_fft_score(normalized[0:128], prediction[0:batch_size])))  # time,
         plot_data(full_time[0], prediction[0:8], autoencoder.predict(prediction[0:8]), show=True, save=False,
                   save_path='./results/AF_5_23_21_')
+    if mode == 'vae':
+        norm_repeat = normalized.repeat(4e3, axis=0)  # 1e4
+        ae_early_stop = EarlyStopping(monitor='loss', mode='min', min_delta=1e-8, verbose=1, patience=3,
+                                       restore_best_weights=True)
+        autoencoder = make_fcc_variationalautoencoder(data_size, 2)
+        autoencoder.compile(optimizer='adam')
+        autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
+                        callbacks=[ae_early_stop], shuffle=True)
+        predictions = autoencoder.predict(normalized)
+        plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
+                  save_path='./results/AF_5_23_21_')
