@@ -5,6 +5,7 @@ import scipy as sp
 import tensorflow as tf
 import datetime
 from matplotlib import pyplot as plt
+from scipy.fft import fft, fftfreq
 
 
 def std_dev(vector):
@@ -23,6 +24,7 @@ def standardize(vector):
     return list(map(lambda x: ((x - avg) / deviation) if deviation != 0 else 0, vector))
 
 
+# TODO write tests for all new metrics
 def abs_mean(vector: np.ndarray) -> float:
     """ Return absolute mean of vector."""
     return np.mean(np.abs(vector))
@@ -63,20 +65,74 @@ def impulse_factor(vector: np.ndarray) -> float:
     """ Return impulse factor of vector."""
     return np.max(vector) / abs_mean(vector)
 
-def frequency_center(vector: np.ndarray) -> float:
+
+def get_fft(vector: np.ndarray) -> np.ndarray:
+    """ Wrapper for FFT function."""
+    return fft(vector)
+
+
+def get_fft_freq(vector: np.ndarray, timestep: float) -> np.ndarray:
+    """ Wrapper for FFT frequencies."""
+    return fftfreq(vector, timestep)
+
+
+def frequency_power_sum(vector: np.ndarray) -> np.ndarray:
+    """ Returns sum of power over frequencies."""
+    return sum(get_fft(vector))
+
+
+# TODO fix these, idk if they work
+def frequency_center(vector: np.ndarray, timestep: float) -> float:
     """ Return frequency center of vector."""
-    fft = sp.fft.fft(vector)
-    return np.mean(fft)
+    # fft = sp.fft.fft(vector)
+    fft, fft_freq = get_fft(vector), get_fft_freq(vector, timestep)
+    return np.sum(fft * fft_freq) / np.sum(fft)
+    # return np.mean(fft)
 
-def root_mean_square(vector: np.ndarray) -> float:
-    """ Return root mean square frequency"""
-    fft = sp.fft.fft(vector)
-    return np.mean(np.abs(np.asarray(fft)) ** 2)
 
-def root_variance_frequency(vector: np.ndarray) -> float:
-    fft = sp.fft.fft(vector)
-    mean = np.mean(fft)
-    return np.sqrt(np.mean((fft - mean) ** 2))
+# TODO fix these, idk if they work
+def root_mean_square_frequency(vector: np.ndarray, timestep: float) -> float:
+    """ Return root mean square frequency."""
+    # fft = sp.fft.fft(vector)
+    fft, fft_freq = get_fft(vector), get_fft_freq(vector, timestep) ** 2
+    return np.sqrt(np.sum(fft * fft_freq) / np.sum(fft))
+    # return np.mean(np.abs(np.asarray(fft)) ** 2)
+
+
+# TODO fix these, idk if they work
+def root_variance_frequency(vector: np.ndarray, timestep: float) -> float:
+    """ Return root variance frequency."""
+    freq_center = frequency_center(vector, timestep)
+    fft, fft_freq = get_fft(vector), get_fft_freq(vector, timestep)
+    return np.sqrt(np.sum(((fft_freq - freq_center) ** 2) * fft) / np.sum(fft))
+    # fft = sp.fft.fft(vector)
+    # mean = np.mean(fft)
+    # return np.sqrt(np.mean((fft - mean) ** 2))
+
+
+# TODO fix these, idk if they work
+def calc_frequency_center(fft_vec: np.ndarray, freqs_vec: np.ndarray) -> float:
+    """ Return frequency center of vector."""
+    return np.sum(fft_vec * freqs_vec) / np.sum(fft_vec)
+    # return np.mean(fft)
+
+
+# TODO fix these, idk if they work
+def calc_root_mean_square_frequency(fft_vec: np.ndarray, freqs_vec: np.ndarray) -> float:
+    """ Return root mean square frequency."""
+    return np.sqrt(np.sum(fft_vec * freqs_vec ** 2) / np.sum(fft_vec))
+    # return np.mean(np.abs(np.asarray(fft)) ** 2)
+
+
+# TODO fix these, idk if they work
+def calc_root_variance_frequency(fft_vec: np.ndarray, freqs_vec: np.ndarray) -> float:
+    """ Return root variance frequency."""
+    freq_center = calc_frequency_center(fft_vec, freqs_vec)
+    return np.sqrt(np.sum(((freqs_vec - freq_center) ** 2) * fft_vec) / np.sum(fft_vec))
+    # fft = sp.fft.fft(vector)
+    # mean = np.mean(fft)
+    # return np.sqrt(np.mean((fft - mean) ** 2))
+
 
 def plot_data(x_values, y_values, trend_data=None, show=False, save=True, save_path=''):
     """ Plot (x, y) pairs, plot secondary trendline if provided."""
