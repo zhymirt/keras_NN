@@ -12,7 +12,7 @@ from keras_gan import generate_sine
 
 class AfAccelGANTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.latent_dim = 256
+        self.latent_dim = 10
         self.vector_size = 5_000
         self.num_freq = 5
 
@@ -53,7 +53,7 @@ class AfAccelGANTest(unittest.TestCase):
                                                                                                     'accel_2.csv',
                                                                                                     'accel_3.csv',
                                                                                                     'accel_4.csv')],
-                                    separate_time=False)
+                                        separate_time=False)
         full_time = complete_data[:, :, 0]
         full_data, labels = [], []
         print('Full time shape: {}'.format(full_time.shape))

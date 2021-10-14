@@ -139,6 +139,8 @@ def make_conditional_af_accel_discriminator(vector_size, num_frequencies, summar
     discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
     discriminator = layers.Conv1D(1024, 3, strides=2, padding='valid')(discriminator)
     discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    discriminator = layers.Conv1D(1024, 3, strides=2, padding='valid')(discriminator)
+    discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
     discriminator = layers.Flatten()(discriminator)
     discriminator = layers.Concatenate()([discriminator, discriminator_input_label])
     discriminator = layers.Dense(1, dtype=data_type)(discriminator)
@@ -249,7 +251,8 @@ def make_fcc_autoencoder(vector_size, latent_dimension, summary=False, data_type
     ])
     model = Autoencoder(encoder=encoder, decoder=decoder, latent_dimension=latent_dimension)
     if summary:
-        print(model.summary())
+        print(encoder.summary())
+        print(decoder.summary())
     return model
 
 

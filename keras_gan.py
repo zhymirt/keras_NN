@@ -16,13 +16,15 @@ from custom_losses import (DiscriminatorWassersteinLoss,
 from keras_data import plot_data
 
 
-def generate_sine(start, end, points, amplitude=1, frequency=1):
+def generate_sine(start, end, points: int = 100, amplitude=1, frequency=1) -> np.ndarray:
+    """ Return sine wave as numpy vector."""
     time = np.linspace(0, 2, 100)
     signal = amplitude * np.sin(2 * np.pi * frequency * time)
     return signal
 
 
 class GAN(keras.Model):
+    """ Class for generative adversarial network."""
     def __init__(self, discriminator, generator, latent_dim):
         super(GAN, self).__init__()
         self.discriminator = discriminator
@@ -30,6 +32,10 @@ class GAN(keras.Model):
         self.latent_dim = latent_dim
         self.discriminator_epochs = 1
         self.generator_epochs = 1
+        self.d_optimizer = None
+        self.g_optimizer = None
+        self.d_loss_fn = None
+        self.g_loss_fn = None
 
     def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, **kwargs):
         super(GAN, self).compile(**kwargs)
@@ -39,8 +45,8 @@ class GAN(keras.Model):
         self.g_loss_fn = g_loss_fn
 
     def set_train_epochs(self, discrim_epochs=1, gen_epochs=1):
-        self.discriminator_epochs = int(discrim_epochs) if discrim_epochs > 0 else 1
-        self.generator_epochs = int(gen_epochs) if gen_epochs > 0 else 1
+        self.discriminator_epochs = max(1, int(discrim_epochs))  # int(discrim_epochs) if discrim_epochs > 0 else 1
+        self.generator_epochs = max(1, int(gen_epochs))  # int(gen_epochs) if gen_epochs > 0 else 1
 
     def train_step(self, real_images):
         if isinstance(real_images, tuple):
@@ -88,7 +94,7 @@ class GAN(keras.Model):
 
 
 class WGAN(GAN):
-
+    """ Class for Wasserstein generative adversarial network."""
     def compile(self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn, g_loss_fn=wasserstein_loss_fn, **kwargs):
         super().compile(d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, **kwargs)
 
@@ -156,6 +162,7 @@ class WGAN(GAN):
 
 
 class cWGAN(WGAN):
+    """ Class for conditional WGAN."""
     def train_step(self, data):
         # Prepare Data
         if isinstance(data, tuple):
@@ -231,6 +238,7 @@ class cWGAN(WGAN):
 
 
 class Autoencoder(keras.Model):
+    """ Autoencoder class."""
     def __init__(self, encoder, decoder, latent_dimension):
         super(Autoencoder, self).__init__()
         self.encoder, self.decoder, self.latent_dimension = encoder, decoder, latent_dimension
@@ -266,8 +274,8 @@ class EBGAN(GAN):
                 synthetic = self.generator(data)
                 g_loss = self.g_loss_fn(self.discriminator(synthetic), synthetic)
                 val_loss = self.regularizer(synthetic)
-                g_loss += val_loss
-            grads = tape.gradient(g_loss, self.generator.trainable_weights)
+                loss = g_loss + val_loss
+            grads = tape.gradient(loss, self.generator.trainable_weights)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
         return g_loss
 
