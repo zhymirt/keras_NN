@@ -7,7 +7,7 @@ from af_accel_GAN import load_data_files, prepare_data
 from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator, \
     make_conditional_af_accel_discriminator, make_conditional_af_accel_generator, make_af_accel_fcc_generator
 from AF_gan import get_fft_score, normalize_data
-from keras_gan import generate_sine
+from sine_gan import generate_sine
 
 
 class AfAccelGANTest(unittest.TestCase):
