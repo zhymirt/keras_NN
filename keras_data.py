@@ -29,7 +29,6 @@ def standardize(vector):
                                / deviation) if deviation != 0 else 0, vector))
 
 
-# TODO write tests for all new metrics
 def abs_mean(vector: ndarray) -> float:
     """ Return absolute mean of vector."""
     return np.mean(np.abs(vector))
@@ -86,7 +85,6 @@ def frequency_power_sum(vector: ndarray) -> ndarray:
     return sum(get_fft(vector))
 
 
-# TODO fix these, idk if they work
 def frequency_center(vector: ndarray, time_step: float) -> float:
     """ Return frequency center of vector."""
     frequencies, power = periodogram(vector, 1/time_step)
@@ -95,24 +93,21 @@ def frequency_center(vector: ndarray, time_step: float) -> float:
     return numerator / denominator
 
 
-# TODO fix these, idk if they work
 def root_mean_square_frequency(vector: ndarray, time_step: float) -> float:
     """ Return root mean square frequency."""
     frequencies, power_spectrum = periodogram(vector, 1/time_step)
     return np.sqrt(np.sum(frequencies**2 * power_spectrum)
-                   / np.sum(frequencies))
+                   / np.sum(power_spectrum))
 
 
-# TODO fix these, idk if they work
 def root_variance_frequency(vector: ndarray, time_step: float) -> float:
     """ Return root variance frequency."""
     frequencies, power_spectrum = periodogram(vector, 1 / time_step)
-    freq_center = frequency_center(vector, time_step)
+    freq_center = calc_frequency_center(power_spectrum, frequencies)
     return np.sqrt(np.sum(((frequencies - freq_center) ** 2) * power_spectrum)
                    / np.sum(power_spectrum))
 
 
-# TODO fix these, idk if they work
 def calc_frequency_center(
         power_spectrum: ndarray, frequencies: ndarray) -> float:
     """ Return frequency center of vector."""
@@ -120,7 +115,6 @@ def calc_frequency_center(
     # return np.mean(fft)
 
 
-# TODO fix these, idk if they work
 def calc_root_mean_square_frequency(
         power_spectrum: ndarray, frequencies: ndarray) -> float:
     """ Return root mean square frequency."""
@@ -129,7 +123,6 @@ def calc_root_mean_square_frequency(
     # return np.mean(np.abs(np.asarray(fft)) ** 2)
 
 
-# TODO fix these, idk if they work
 def calc_root_variance_frequency(
         power_spectrum: ndarray, frequencies: ndarray) -> float:
     """ Return root variance frequency."""
