@@ -1,24 +1,28 @@
+""" Test Suite for keras_data.py
+    Zhymir Thompson 2021"""
 import unittest
-from unittest import TestCase
 
 import numpy as np
-from numpy import sqrt
 
-from keras_data import abs_mean, frequency_center, get_fft_freq, get_fft, rms, root_mean_square_frequency, \
-    root_variance_frequency
+from keras_data import abs_mean, frequency_center
+from keras_data import rms, root_mean_square_frequency
+from keras_data import root_variance_frequency, skewness, crest_factor
+from numpy import sqrt
 from sine_gan import generate_sine
+from unittest import TestCase
+
 from matplotlib import pyplot as plt
 
 
 class StatisticsTestCase(TestCase):
     def test_std_dev(self):
-        self.skipTest()
+        self.skipTest('Not used, no need to test right now.')
 
     def test_standardize(self):
-        self.skipTest()
+        self.skipTest('Not used, no need to test right now.')
 
 
-class MyTestCase(TestCase):
+class StatisticsTestCase(TestCase):
     def setUp(self) -> None:
         self.start_time, self.stop_time = 0, 5
         self.test_vector_size = 5_000
@@ -55,29 +59,36 @@ class MyTestCase(TestCase):
                 self.assertAlmostEqual(rms(wave), root_2, places=places)
 
     def test_skewness(self):
-        self.skipTest('not written yet')
+        # self.skipTest('not written yet')
+        places = 12
+        # Skewness for uniform distribution should be zero
+        for idx in range(1, 21):
+            with self.subTest():
+                wave = generate_sine(
+                    self.start_time, self.stop_time,
+                    self.test_vector_size, amplitude=idx)
+                self.assertAlmostEqual(skewness(wave), 0, places=places)
 
     def test_kurtosis(self):
         self.skipTest('not written yet')
 
     def test_crest_factor(self):
-        self.skipTest('not written yet')
+        # self.skipTest('not written yet')
+        places = 3
+        root_of_two = sqrt(2)
+        # Crest factor for sine wave should be about root of 2
+        for idx in range(1, 21):
+            with self.subTest():
+                wave = generate_sine(
+                    self.start_time, self.stop_time,
+                    self.test_vector_size, amplitude=idx)
+                self.assertAlmostEqual(crest_factor(wave), root_of_two, places=places)
 
     def test_shape_factor(self):
         self.skipTest('not written yet')
 
     def test_impulse_factor(self):
         self.skipTest('not written yet')
-
-    def test_get_fft(self):
-        # self.skipTest('Analyze plot manually.')
-        wave = generate_sine(self.start_time, self.stop_time, self.test_vector_size, amplitude=1, frequency=1)
-        plt.figure()
-        plt.plot(get_fft_freq(wave, self.time_step), get_fft(wave))
-        plt.show()
-
-    def test_get_fft_freq(self):
-        self.skipTest('Unnecessary for now.')
 
     def test_frequency_center(self):
         # self.skipTest('not written yet')

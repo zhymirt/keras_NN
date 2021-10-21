@@ -70,21 +70,6 @@ def impulse_factor(vector: ndarray) -> float:
     return np.max(vector) / abs_mean(vector)
 
 
-def get_fft(vector: ndarray) -> ndarray:
-    """ Wrapper for FFT function."""
-    return fft(vector)
-
-
-def get_fft_freq(vector: ndarray, time_step: float) -> ndarray:
-    """ Wrapper for FFT frequencies."""
-    return fftfreq(vector.size, time_step)
-
-
-def frequency_power_sum(vector: ndarray) -> ndarray:
-    """ Returns sum of power over frequencies."""
-    return sum(get_fft(vector))
-
-
 def frequency_center(vector: ndarray, time_step: float) -> float:
     """ Return frequency center of vector."""
     frequencies, power = periodogram(vector, 1/time_step)
