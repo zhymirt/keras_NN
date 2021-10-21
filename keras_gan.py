@@ -16,7 +16,9 @@ from custom_losses import (DiscriminatorWassersteinLoss,
 from keras_data import plot_data
 
 
-def generate_sine(start, end, points: int = 100, amplitude=1, frequency=1) -> np.ndarray:
+def generate_sine(
+        start, end, points: int = 100,
+        amplitude=1, frequency=1) -> np.ndarray:
     """ Return sine wave as numpy vector."""
     time = np.linspace(0, 2, 100)
     signal = amplitude * np.sin(2 * np.pi * frequency * time)
@@ -37,7 +39,8 @@ class GAN(keras.Model):
         self.d_loss_fn = None
         self.g_loss_fn = None
 
-    def compile(self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, **kwargs):
+    def compile(
+            self, d_optimizer, g_optimizer, d_loss_fn, g_loss_fn, **kwargs):
         super(GAN, self).compile(**kwargs)
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
@@ -305,34 +308,9 @@ class VAE(keras.Model):
     def __init__(self, encoder, decoder, latent_dimension):
         super(VAE, self).__init__()
         self.latent_dimension = latent_dimension
-        self.encoder = encoder # tf.keras.Sequential(
-        #     [
-        #         tf.keras.layers.InputLayer(input_shape=(28, 28, 1)),
-        #         tf.keras.layers.Conv2D(
-        #             filters=32, kernel_size=3, strides=(2, 2), activation='relu'),
-        #         tf.keras.layers.Conv2D(
-        #             filters=64, kernel_size=3, strides=(2, 2), activation='relu'),
-        #         tf.keras.layers.Flatten(),
-        #         # No activation
-        #         tf.keras.layers.Dense(latent_dim + latent_dim),
-        #     ]
-        # )
-        self.decoder = decoder # tf.keras.Sequential(
-        #     [
-        #         tf.keras.layers.InputLayer(input_shape=(latent_dim,)),
-        #         tf.keras.layers.Dense(units=7*7*32, activation=tf.nn.relu),
-        #         tf.keras.layers.Reshape(target_shape=(7, 7, 32)),
-        #         tf.keras.layers.Conv2DTranspose(
-        #             filters=64, kernel_size=3, strides=2, padding='same',
-        #             activation='relu'),
-        #         tf.keras.layers.Conv2DTranspose(
-        #             filters=32, kernel_size=3, strides=2, padding='same',
-        #             activation='relu'),
-        #         # No activation
-        #         tf.keras.layers.Conv2DTranspose(
-        #             filters=1, kernel_size=3, strides=1, padding='same'),
-        #     ]
-        # )
+        self.encoder = encoder
+        self.decoder = decoder
+
     def predict(self, x):
         return self.call(x)
 
@@ -372,14 +350,15 @@ class VAE(keras.Model):
     def log_normal_pdf(self, sample, mean, logvar, raxis=1):
         log2pi = tf.math.log(2. * np.pi)
         return tf.reduce_sum(
-          -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar + log2pi),
-          axis=raxis)
+          -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar
+                 + log2pi), axis=raxis)
 
     def compute_loss(self, x):
         mean, logvar = self.encode(x)
         z = self.reparameterize(mean, logvar)
         x_logit = self.decode(z)
-        cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)
+        cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=x_logit, labels=x)
         print('Cross Entropy Shape: {}'.format(cross_ent.shape))
         logpx_z = -tf.reduce_sum(cross_ent, axis=[1])
         logpz = self.log_normal_pdf(z, 0., 0.)
@@ -400,7 +379,8 @@ class VAE(keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.compiled_metrics.update_state(x, self(x))
         metrics = {m.name: m.result() for m in self.metrics}
-        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.optimizer.apply_gradients(
+            zip(gradients, self.trainable_variables))
         metrics.update({'loss': loss})
         return metrics
 
@@ -416,7 +396,8 @@ class Sampling(layers.Layer):
         epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
-class log_images_callback(tf.keras.callbacks.Callback):
+
+class LogImagesCallback(tf.keras.callbacks.Callback):
     def __init__(self, image_shape: tuple, num_images: int = 1):
         super().__init__(self)
         self.noise_vectors = tf.random.normal(shape=((num_images,) + image_shape))
@@ -425,7 +406,8 @@ class log_images_callback(tf.keras.callbacks.Callback):
         pass
 
 
-class print_logs_callback(tf.keras.callbacks.Callback):
+class PrintLogsCallback(tf.keras.callbacks.Callback):
+    """ Callback to print logs."""
     def on_epoch_begin(self, epoch, logs=None):
         print('Beginning logs: {}'.format(list(logs.keys())))
 
@@ -433,7 +415,8 @@ class print_logs_callback(tf.keras.callbacks.Callback):
         print('Ending logs: {}'.format(list(logs.keys())))
 
 
-class fft_callback(tf.keras.callbacks.Callback):
+class FFTCallback(tf.keras.callbacks.Callback):
+    """ Callback for FFt Score."""
     def on_epoch_end(self, epoch, logs=None):
         print('FFT Score: {}'.format(logs['metric_fft_score']))
 

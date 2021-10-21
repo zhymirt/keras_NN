@@ -4,8 +4,11 @@ import unittest
 import numpy as np
 
 from af_accel_GAN import load_data_files, prepare_data
-from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator, \
-    make_conditional_af_accel_discriminator, make_conditional_af_accel_generator, make_af_accel_fcc_generator
+from model_architectures.af_accel_GAN_architecture import (make_af_accel_discriminator,
+                                                           make_af_accel_generator,
+                                                           make_conditional_af_accel_discriminator,
+                                                           make_conditional_af_accel_generator,
+                                                           make_af_accel_fcc_generator)
 from AF_gan import get_fft_score, normalize_data
 from sine_gan import generate_sine
 
@@ -17,7 +20,8 @@ class AfAccelGANTest(unittest.TestCase):
         self.num_freq = 5
 
     def test_fcc_generator_succeeds(self):
-        model = make_af_accel_fcc_generator(self.latent_dim, self.vector_size, summary=True)
+        model = make_af_accel_fcc_generator(
+            self.latent_dim, self.vector_size, summary=True)
         self.assertTrue(bool(model))
 
     def test_discriminator_succeeds(self):
@@ -25,23 +29,27 @@ class AfAccelGANTest(unittest.TestCase):
         self.assertTrue(bool(model))
 
     def test_generator_succeeds(self):
-        model = make_af_accel_generator(self.latent_dim, self.vector_size, summary=True)
+        model = make_af_accel_generator(
+            self.latent_dim, self.vector_size, summary=True)
         self.assertTrue(bool(model))
         self.assertEqual(model.output_shape, (None, self.vector_size))
 
     def test_conditional_discriminator_succeeds(self):
-        model = make_conditional_af_accel_discriminator(self.vector_size, self.num_freq, summary=True)
+        model = make_conditional_af_accel_discriminator(
+            self.vector_size, self.num_freq, summary=True)
         self.assertTrue(bool(model))
 
     def test_conditional_generator_succeeds(self):
-        model = make_conditional_af_accel_generator(self.latent_dim, self.vector_size, self.num_freq, summary=True)
+        model = make_conditional_af_accel_generator(
+            self.latent_dim, self.vector_size, self.num_freq, summary=True)
         self.assertTrue(bool(model))
         self.assertEqual(model.output_shape, (None, self.vector_size))
 
     def test_fft_score(self):
         wave = generate_sine(0, 5, self.vector_size, 2)
         print(get_fft_score(np.array([wave]), np.array([wave])))
-        self.assertAlmostEqual(get_fft_score(np.array([wave]), np.array([wave])), 0, 8)
+        self.assertAlmostEqual(
+            get_fft_score(np.array([wave]), np.array([wave])), 0, 8)
 
     def test_fft_score_one_dimension(self):
         wave = np.array(generate_sine(0, 10, 4_000, 1, 4))
@@ -49,10 +57,9 @@ class AfAccelGANTest(unittest.TestCase):
         self.assertAlmostEqual(get_fft_score(wave, wave), 0, 8)
 
     def test_prepare_data_succeeds(self):
-        complete_data = load_data_files([os.path.join('../../acceleration_data', name) for name in ('accel_1.csv',
-                                                                                                    'accel_2.csv',
-                                                                                                    'accel_3.csv',
-                                                                                                    'accel_4.csv')],
+        complete_data = load_data_files([
+            os.path.join('../../acceleration_data', name) for name in (
+                'accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv')],
                                         separate_time=False)
         full_time = complete_data[:, :, 0]
         full_data, labels = [], []
@@ -66,10 +73,12 @@ class AfAccelGANTest(unittest.TestCase):
         # exit()
         # print('Complete shape: {}'.format(complete_data.shape))
         # full_time, full_data = complete_data[0:1, :, 2:3], complete_data[1:, :, 2:3]
-        print('Full Time shape: {}, Full Data shape: {}'.format(full_time.shape, full_data.shape))
+        print('Full Time shape: {}, Full Data shape: {}'.format(
+            full_time.shape, full_data.shape))
         data_size = full_data.shape[1]
         normalized, scalars = normalize_data(full_data)
-        prepared_data = prepare_data(complete_data, scaling='normalize', return_labels=True)
+        prepared_data = prepare_data(
+            complete_data, scaling='normalize', return_labels=True)
         self.assertTrue(np.array_equal(full_data, prepared_data['data']))
         self.assertTrue(np.array_equal(full_time, prepared_data['times']))
         # self.assertTrue(np.array_equal(labels, prepared_data['labels']))

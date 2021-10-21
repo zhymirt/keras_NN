@@ -16,7 +16,7 @@ from AF_gan import normalize_data, denormalize_data, metric_fft_score, get_fft_s
     plot_data, plot_correlations, plot_recurrence_diff
 from custom_losses import ebgan_loss_fn
 from keras_data import data_to_dataset, get_date_string
-from keras_gan import WGAN, fft_callback, cWGAN, print_logs_callback, EBGAN
+from keras_gan import WGAN, FFTCallback, cWGAN, PrintLogsCallback, EBGAN
 from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator, \
     make_conditional_af_accel_discriminator, make_conditional_af_accel_generator, make_af_accel_fcc_generator, \
     make_fcc_autoencoder, make_cnn_autoencoder, make_fcc_variationalautoencoder
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                 (tf.random.normal(shape=(1, latent_dimension)),
                  tf.constant(mlb.transform([[1, 3]]), dtype=data_type))))))  # time,
             cwgan.fit((normalized, new_labels), epochs=epochs, batch_size=batch_size,
-                      callbacks=[fft_callback(), early_stop])
+                      callbacks=[FFTCallback(), early_stop])
             # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
             # generator.save('./models/conditional_af_accel_generator_v3')
             # discriminator.save('./models/conditional_af_accel_discriminator_v3')
@@ -237,7 +237,7 @@ if __name__ == '__main__':
             csv_log = CSVLogger(filename='./model_logs/{}_af_accel_log.csv'.format(get_date_string()))
             # checkpoint = keras.callbacks.ModelCheckpoint(filepath='./af_accel_tmp/checkpoint', save_weights_only=True)
             tb = keras.callbacks.TensorBoard(log_dir='./logs/af_accel_log_dir', histogram_freq=1)
-            callback_list = [fft_callback(), early_stop, print_logs_callback(), csv_log, tb]
+            callback_list = [FFTCallback(), early_stop, PrintLogsCallback(), csv_log, tb]
             print('FFT Score before training: {}'.format(get_fft_score(normalized[0:128], generator.predict(
                 tf.random.normal(shape=(batch_size, latent_dimension))))))  # time,
             print(average_wasserstein(normalized[0:2], generator.predict(
