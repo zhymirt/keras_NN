@@ -8,13 +8,6 @@ Created on Mon Feb  3 23:26:24 2020
 
 
 import numpy as np
-# import scipy as sp
-# from scipy import fftpack, signal # have to add 
-# import matplotlib as mpl
-import matplotlib.pyplot as plt
-
-plt.close('all')
-
 import matplotlib.pyplot as plt
 from pyts.image import RecurrencePlot
 # from pyts.datasets import load_gunpoint
@@ -46,6 +39,8 @@ def get_recurrence_diff(y_1, y_2):
 
 
 if __name__ == '__main__':
+    plt.close('all')
+
     # X, _, _, _ = load_gunpoint(return_X_y=True)
 
     xx = np.linspace(0,2,1000)

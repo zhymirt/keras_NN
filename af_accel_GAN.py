@@ -16,10 +16,10 @@ from AF_gan import normalize_data, denormalize_data, metric_fft_score, get_fft_s
     plot_data, plot_correlations, plot_recurrence_diff
 from custom_losses import ebgan_loss_fn
 from keras_data import data_to_dataset, get_date_string
-from keras_gan import WGAN, fft_callback, cWGAN, print_logs_callback, EBGAN
+from keras_gan import WGAN, FFTCallback, cWGAN, PrintLogsCallback, EBGAN
 from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator, \
     make_conditional_af_accel_discriminator, make_conditional_af_accel_generator, make_af_accel_fcc_generator, \
-    make_fcc_autoencoder, make_cnn_autoencoder
+    make_fcc_autoencoder, make_cnn_autoencoder, make_fcc_variationalautoencoder
 
 
 def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
@@ -29,7 +29,8 @@ def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
         :param separate_time: bool = True
         :return: np.ndarray"""
     fn_data = np.loadtxt(filename, delimiter=',', skiprows=2)
-    return fn_data[:, 0], fn_data[:, 1:] if separate_time else fn_data
+
+    return (fn_data[:, 0], fn_data[:, 1:]) if separate_time else fn_data
     # if separate_time:
     #     return fn_data[:, 0], fn_data[:, 1:]
     # else:
@@ -50,7 +51,8 @@ def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndar
 
     """
     fn_data = np.array([load_data(name, separate_time=False) for name in filenames])
-    return fn_data[:, :, 0], fn_data[:, :, 1:] if separate_time else fn_data
+
+    return (fn_data[:, :, 0], fn_data[:, :, 1:]) if separate_time else fn_data
     # if separate_time:
     #     return fn_data[:, :, 0], fn_data[:, :, 1:]
     # else:
@@ -70,22 +72,22 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     -------
     dict: Contains keys ['data', 'times', 'labels', 'normalized', 'scalars']
     """
-    returned_values = dict()
+    returned_values, full_data, labels = dict(), list(), list()
     # print('Complete shape: {}'.format(complete.shape))
-    full_time, full_data, labels = complete[:, :, 0], list(), list()
+    full_time = complete[:, :, 0]
     data_start, data_end = 1, 5
-    # full_time = complete[:, :, 0]
-    # full_data, labels = [], []
     # print('Full time shape: {}'.format(full_time.shape))
     if complete.ndim == 2:
-        for test_num, test in enumerate(complete.transpose((1, 0))[data_start:data_end], start=1):
+        for test_num, test in enumerate(
+                complete.transpose((1, 0))[data_start:data_end], start=1):
             # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
             # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
             labels.append([test_num])
             full_data.append(test)
     elif complete.ndim == 3:
         for example_set in complete.transpose((0, 2, 1)):
-            for test_num, test in enumerate(example_set[data_start:data_end], start=1):
+            for test_num, test in enumerate(
+                    example_set[data_start:data_end], start=1):
                 # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
                 # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
                 labels.append([test_num])
@@ -98,7 +100,9 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     returned_values['data'] = full_data
     if return_labels:
         returned_values['labels'] = labels
-    if scaling is not None and scaling == 'normalize':
+    if scaling is None:
+        returned_values
+    elif scaling == 'normalize':
         returned_values['normalized'], returned_values['scalars'] = preprocessing.normalize(full_data, norm='max', axis=1, return_norm=True) # normalize_data(full_data)
     # elif scaling == 'minmax':
     #     preprocessing.minmax_scale
@@ -114,9 +118,11 @@ def average_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> float:
     if arr_1.ndim == 1:
         return scipy.stats.wasserstein_distance(arr_1, arr_2)
     elif arr_1.ndim == 2:
-        distances = list()
-        for item_1, item_2 in zip(arr_1, arr_2):
-            distances.append(scipy.stats.wasserstein_distance(item_1, item_2))
+        distances = [scipy.stats.wasserstein_distance(item_1, item_2)
+                     for item_1, item_2 in zip(arr_1, arr_2)]
+        # distances = list()
+        # for item_1, item_2 in zip(arr_1, arr_2):
+        #     distances.append(scipy.stats.wasserstein_distance(item_1, item_2))
         # print(distances)
         return np.asarray(distances).mean()
 
@@ -137,7 +143,7 @@ def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
 
 
 if __name__ == '__main__':
-    latent_dimension, data_type, epochs, batch_size, conditional, mode = 128, 'float32', 64, 32, True, 'ebgan'
+    latent_dimension, data_type, epochs, batch_size, conditional, mode = 10, 'float32', 64, 32, True, 'standard'
     folder_name, file_names = '../acceleration_data', ['accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv']
     # time, data = load_data('../acceleration_data/accel_1.csv')
     # print('Time shape: {}, Data shape: {}'.format(time.shape, data.shape))
@@ -188,7 +194,7 @@ if __name__ == '__main__':
                 (tf.random.normal(shape=(1, latent_dimension)),
                  tf.constant(mlb.transform([[1, 3]]), dtype=data_type))))))  # time,
             cwgan.fit((normalized, new_labels), epochs=epochs, batch_size=batch_size,
-                      callbacks=[fft_callback(), early_stop])
+                      callbacks=[FFTCallback(), early_stop])
             # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
             # generator.save('./models/conditional_af_accel_generator_v3')
             # discriminator.save('./models/conditional_af_accel_discriminator_v3')
@@ -234,7 +240,7 @@ if __name__ == '__main__':
             csv_log = CSVLogger(filename='./model_logs/{}_af_accel_log.csv'.format(get_date_string()))
             # checkpoint = keras.callbacks.ModelCheckpoint(filepath='./af_accel_tmp/checkpoint', save_weights_only=True)
             tb = keras.callbacks.TensorBoard(log_dir='./logs/af_accel_log_dir', histogram_freq=1)
-            callback_list = [fft_callback(), early_stop, print_logs_callback(), csv_log, tb]
+            callback_list = [FFTCallback(), early_stop, PrintLogsCallback(), csv_log, tb]
             print('FFT Score before training: {}'.format(get_fft_score(normalized[0:128], generator.predict(
                 tf.random.normal(shape=(batch_size, latent_dimension))))))  # time,
             print(average_wasserstein(normalized[0:2], generator.predict(
@@ -269,13 +275,13 @@ if __name__ == '__main__':
         eb_early_stop = EarlyStopping(monitor='Reconstruction error', mode='min', min_delta=1e-12, verbose=1, patience=3,
                                        restore_best_weights=True)
         # Make autoencoder
-        autoencoder = make_fcc_autoencoder(data_size, 64)
+        autoencoder = make_fcc_autoencoder(data_size, 16)
         dataset = data_to_dataset(normalized)
         autoencoder.compile(loss=tf.keras.losses.mean_squared_error, optimizer='adam')
         autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
                         callbacks=[ae_early_stop], shuffle=True)
-        # plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
-        #           save_path='./results/AF_5_23_21_')
+        plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
+                  save_path='./results/AF_5_23_21_')
         print("Training generator...")
 
         # Use autoencoder loss as gan loss function
@@ -286,9 +292,9 @@ if __name__ == '__main__':
                     g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                     d_loss_fn=tf.keras.losses.mean_squared_error,
                     g_loss_fn=tf.keras.losses.mean_squared_error,
-                     metrics=[metric_fft_score, tf_avg_wasserstein]
+                     metrics=[metric_fft_score, tf_avg_wasserstein, 'g_loss']
                      )
-        ebgan.fit(norm_repeat, epochs=64, batch_size=batch_size, shuffle=True) # , callbacks=[eb_early_stop]
+        ebgan.fit(norm_repeat, epochs=64, batch_size=batch_size, shuffle=True, callbacks=[eb_early_stop])  #
         # Saving models
         # generator.save('models/af_accel_generator_full')
         # discriminator.save('models/af_accel_discriminator_full')
@@ -303,4 +309,15 @@ if __name__ == '__main__':
         print('FFT Score after training: {}'.format(
             get_fft_score(normalized[0:128], prediction[0:batch_size])))  # time,
         plot_data(full_time[0], prediction[0:8], autoencoder.predict(prediction[0:8]), show=True, save=False,
+                  save_path='./results/AF_5_23_21_')
+    if mode == 'vae':
+        norm_repeat = normalized.repeat(4e3, axis=0)  # 1e4
+        ae_early_stop = EarlyStopping(monitor='loss', mode='min', min_delta=1e-8, verbose=1, patience=3,
+                                       restore_best_weights=True)
+        autoencoder = make_fcc_variationalautoencoder(data_size, 2)
+        autoencoder.compile(optimizer='adam')
+        autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
+                        callbacks=[ae_early_stop], shuffle=True)
+        predictions = autoencoder.predict(normalized)
+        plot_data(full_time[0], autoencoder.predict(normalized)[0:6], normalized[0:6], show=True, save=False,
                   save_path='./results/AF_5_23_21_')

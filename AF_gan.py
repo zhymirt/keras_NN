@@ -14,7 +14,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss, wasserstein_loss_fn, wasserstein_metric_fn)
 from keras_data import data_to_dataset, plot_data, standardize
-from keras_gan import WGAN, cWGAN, fft_callback
+from keras_gan import WGAN, cWGAN, FFTCallback
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.AF_gan_architecture import (make_AF_discriminator,
                                                      make_AF_generator, make_AF_spectrogram_discriminator_1,
@@ -25,8 +25,11 @@ save_paths = list(map(lambda x: 'time_' + x, keys[1:]))
 
 
 def read_file(filename):
-    """ Read file at given filename and return dictionary of lists composed of floats from file"""
-    # data = {'time': [], 'accel': [], 'intaccel': [], 'sg1': [], 'sg2': [], 'sg3': []}
+    """ Read file at given filename and return dictionary of lists composed
+     of floats from file"""
+    # data = {
+    #   'time': [], 'accel': [], 'intaccel': [], 'sg1': [],
+    #   'sg2': [], 'sg3': []}
     data = {key: list() for key in keys}
     with open(filename, 'r') as tempFile:
         tempFile.readline()
@@ -50,7 +53,8 @@ def read_file_to_arrays(filename):
         while data_line:
             split = data_line.split()
             time.append(float(split[0]))  # append time to time column
-            data.append([float(value) for value in split[1:]])  # append data as 5-tuple
+            # append data as 5-tuple
+            data.append([float(value) for value in split[1:]])
             data_line = tempFile.readline()
     return time, data
 
@@ -75,7 +79,8 @@ def signal_dict_to_list(data):
     """ Take signal dictionary and convert to list, time excluded"""
     # signal_data = [ data[val] for val in keys[1:]] # as 5 rows of 5501
     indices = [idx for idx in range(len(data['time']))]
-    signal_data = list(map(lambda x: [data[key][x] for key in keys[1:]], indices))
+    signal_data = list(
+        map(lambda x: [data[key][x] for key in keys[1:]], indices))
     return signal_data  # grab all but time list and make list
 
 
@@ -87,7 +92,8 @@ def plot_recurrence_diff(ref_data, synthetic_data, tmp_rp=None):
     """ Take two samples of data and plot their recurrence plots."""
     # recurrence difference plot
     tmp_rp = RecurrencePlot() if tmp_rp is None else tmp_rp
-    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, synthetic_data.ndim))
+    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(
+        ref_data.ndim, synthetic_data.ndim))
     if ref_data.ndim == 1:
         ref_data = np.expand_dims(ref_data, 0)
     if synthetic_data.ndim == 1:
@@ -101,7 +107,9 @@ def plot_recurrence_diff(ref_data, synthetic_data, tmp_rp=None):
         # temp_diff = temp_orig - temp_synth
         ax[0].imshow(temp_orig, cmap='binary', origin='lower')
         ax[1].imshow(temp_synth, cmap='binary', origin='lower')
-        # ax[2].imshow(temp_diff, cmap='binary', label='Difference btwn Recurrence Plots', origin='lower')
+        # ax[2].imshow(
+        # temp_diff, cmap='binary',
+        # label='Difference btwn Recurrence Plots', origin='lower')
         ax[0].set_title('Reference Recurrence Plot')
         ax[1].set_title('Synthetic Recurrence Plot')
         # ax[2].set_title('Recurrence plot Difference')
@@ -114,15 +122,18 @@ def plot_correlations(ref_data, synthetic_data):
     """ Plot correlation graphs between real and generated data."""
     temp_corr_fig = plt.figure()
     # ax = temp_corr_fig.subplots(ncols=ref_data.shape[0], nrows=2, sharey=True)
-    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, synthetic_data.ndim))
+    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(
+        ref_data.ndim, synthetic_data.ndim))
     if ref_data.ndim == 1:
         ref_data = np.expand_dims(ref_data, 0)
     if synthetic_data.ndim == 1:
         synthetic_data = np.expand_dims(synthetic_data, 0)
-    for idx, (ref_signal, synthetic_signal) in enumerate(zip(ref_data, synthetic_data)):
+    for idx, (ref_signal, synthetic_signal) in enumerate(
+            zip(ref_data, synthetic_data)):
         temp_orig_auto = signal.correlate(ref_signal, ref_signal)
         temp_synth_cross = signal.correlate(ref_signal, synthetic_signal)
-        temp_synth_auto = signal.correlate(synthetic_signal, synthetic_signal)
+        temp_synth_auto = signal.correlate(
+            synthetic_signal, synthetic_signal)
         plt.subplot(2, ref_data.shape[0], idx + 1)
         plt.plot(temp_orig_auto, label='Reference Autocorrelation')
         plt.plot(temp_synth_auto, '--', label='Synthetic Autocorrelation')
@@ -135,8 +146,10 @@ def plot_correlations(ref_data, synthetic_data):
         plt.title('Signal Cross Correlation')
 
 
-def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
-    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(ref_data.ndim, data.ndim))
+def plot_data(
+        time, data, ref_data=None, show=False, save=True, save_path=''):
+    print('Ref num dimensions: {}, Synth num dimensions: {}'.format(
+        ref_data.ndim, data.ndim))
     if ref_data.ndim == 1:
         ref_data = np.expand_dims(ref_data, 0)
     if data.ndim == 1:
@@ -188,34 +201,47 @@ def plot_data(time, data, ref_data=None, show=False, save=True, save_path=''):
     return temp_fig
 
 
-def generate_generic_training_data(time_frame, num_signals=1, frequencies=[1], amplitudes=[1], h_offsets=[0],
-                                   v_offsets=[0]):
+def generate_generic_training_data(
+        time_frame, num_signals=1, frequencies=[1], amplitudes=[1],
+        h_offsets=[0], v_offsets=[0]):
+    """ Generate and return array of random signals."""
     # should be done in parallel to improve performance
     r_amplitudes = np.random.choice(amplitudes, size=num_signals)
     r_frequencies = np.random.choice(frequencies, size=num_signals)
     r_h_offsets = np.random.choice(h_offsets, size=num_signals)
     r_v_offsets = np.random.choice(v_offsets, size=num_signals)
     # end of parallel run
-    signals = [(amplitude * np.sin(2 * np.pi * frequency * (time_frame + h_offset))) + v_offset for amplitude, frequency,
-                                                                                              h_offset, v_offset in zip(
-                                                                r_amplitudes, r_frequencies, r_h_offsets, r_v_offsets)]
+    signals = [(amplitude * np.sin(2 * np.pi * frequency * (
+            time_frame + h_offset))) + v_offset for (
+        amplitude, frequency, h_offset, v_offset) in zip(
+        r_amplitudes, r_frequencies, r_h_offsets, r_v_offsets)]
     # signal = amplitude * np.sin(2 * np.pi * frequency * time)
     return signals
 
 
 def get_auto_correlate_score(dataset, synth):
+    """ Calculate and return auto correlate score."""
     # Only works for synthesized of size 1 for now
-    synth_auto_corr = np.array([signal.correlate(synth[0, idx], synth[0, idx]) for idx in range(synth.shape[1])])
-    dataset_auto_corr = np.array([[signal.correlate(dataset[jdx, idx], dataset[jdx, idx]) for idx in range(dataset.shape[1])] for jdx in range(dataset.shape[0])])
+    synth_auto_corr = np.array(
+        [signal.correlate(
+            synth[0, idx], synth[0, idx]) for idx in range(synth.shape[1])])
+    dataset_auto_corr = np.array(
+        [[signal.correlate(
+            dataset[jdx, idx], dataset[jdx, idx]) for idx in range(
+            dataset.shape[1])] for jdx in range(dataset.shape[0])])
     print(synth_auto_corr.shape)
     print(dataset_auto_corr.shape)
-    mses = np.array([np.average(np.square(dataset_auto_corr[data_point] - synth_auto_corr)) for data_point in range(dataset.shape[0])])
+    mses = np.array(
+        [np.average(np.square(
+            dataset_auto_corr[data_point]
+            - synth_auto_corr)) for data_point in range(dataset.shape[0])])
     print(mses.shape)
     print(mses)
     return np.min(mses)
 
 
 def get_cross_correlate_score(dataset, synth):
+    """ Compute and return cross correlate score."""
     correlates = []
     for d_sample, s_sample in zip(dataset, synth):
         correlate = signal.correlate(d_sample, s_sample)
@@ -235,9 +261,10 @@ def get_fft_score(dataset, synth):
     for synth_obj in synth_fft:
         min_diff = 1e99
         for data_obj in data_fft:
-            diff = np.real(data_obj - synth_obj)
-            diff = np.square(diff)
-            diff = np.average(diff)
+            # diff = np.real(data_obj - synth_obj)
+            # diff = np.square(diff)
+            # diff = np.average(diff)
+            diff = np.average(np.square(np.real(data_obj - synth_obj)))
             min_diff = min(min_diff, diff)
         min_diffs.append(min_diff)
     min_diffs = np.sqrt(np.real(min_diffs))
@@ -246,10 +273,13 @@ def get_fft_score(dataset, synth):
 
 @tf.function
 def metric_fft_score(dataset, synth):
-    return tf.cast(tf.py_function(get_fft_score, (dataset, synth), tf.complex64), tf.float32)
+    """ Wrapper for get_fft_score."""
+    return tf.cast(tf.py_function(
+            get_fft_score, (dataset, synth), tf.complex64), tf.float32)
 
 
 def normalize_data(data):
+    """ Return normalized data and scalars."""
     norm_data = None
     if np.ndim(data) < 2 or np.ndim(data) > 3:
         return None
@@ -257,12 +287,14 @@ def normalize_data(data):
         norm_data = data.reshape((data.shape[1], -1))
     elif np.ndim(data) == 2:
         norm_data = data.reshape((data.shape[0], -1))
-    norm_data, norm = preprocessing.normalize(norm_data, norm='l2', axis=1, return_norm=True)
+    norm_data, norm = preprocessing.normalize(
+        norm_data, norm='l2', axis=1, return_norm=True)
     norm_data = norm_data.reshape(data.shape)
     return norm_data, norm
 
 
 def denormalize_data(data, norms):
+    """ Return resized vector using given scalars."""
     norm_data = None
     if np.ndim(data) < 2 or np.ndim(data) > 3:
         return None
@@ -270,7 +302,8 @@ def denormalize_data(data, norms):
         norm_data = data.reshape((data.shape[1], -1))
     elif np.ndim(data) == 2:
         norm_data = data.reshape((data.shape[0], -1))
-    resized = np.array([norm_data[idx, :] * norm_val for idx, norm_val in enumerate(norms)])
+    resized = np.array([norm_data[idx, :]
+                        * norm_val for idx, norm_val in enumerate(norms)])
     resized = resized.reshape(data.shape)
     return resized
 
@@ -383,7 +416,7 @@ if __name__ == '__main__':
         # wgan.fit(generic_dataset, epochs=128, batch_size=batch_size)
         # Train model with real data
         early_stop = EarlyStopping(monitor='metric_fft_score', mode='min', min_delta=1e-2, verbose=1, patience=5)
-        wgan.fit(dataset, epochs=0, batch_size=batch_size, callbacks=[fft_callback(), early_stop])
+        wgan.fit(dataset, epochs=0, batch_size=batch_size, callbacks=[FFTCallback(), early_stop])
         # Saving models
         # generator.save('models/af_generator_full')
         # discriminator.save('models/af_discriminator_full')
