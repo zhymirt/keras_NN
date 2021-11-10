@@ -14,7 +14,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss, wasserstein_loss_fn, wasserstein_metric_fn)
 from keras_data import data_to_dataset, plot_data, standardize
-from keras_gan import WGAN, CWGAN, FFTCallback
+from custom_callbacks import FFTCallback
+from custom_classes import WGAN, CWGAN
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.AF_gan_architecture import (make_AF_discriminator,
                                                      make_AF_generator, make_AF_spectrogram_discriminator_1,

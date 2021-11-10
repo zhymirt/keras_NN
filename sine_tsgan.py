@@ -16,7 +16,7 @@ from keras_model_functions import plot_recurrence
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN, WGAN, CWGAN
+from custom_classes import GAN, WGAN, CWGAN
 from model_architectures.sine_tsgan_architecture import make_sine_tsgan_discriminator_1, make_sine_tsgan_generator_1, \
     make_sine_tsgan_discriminator_2, make_sine_tsgan_generator_2
 from sine_gan import generate_conditional_image_summary, generate_image_summary, generate_sine, plot_sine

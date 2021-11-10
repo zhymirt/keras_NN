@@ -16,7 +16,8 @@ from AF_gan import (normalize_data, denormalize_data, metric_fft_score,
                     plot_correlations, plot_recurrence_diff)
 from custom_losses import ebgan_loss_fn
 from keras_data import data_to_dataset, get_date_string
-from keras_gan import WGAN, FFTCallback, CWGAN, PrintLogsCallback, EBGAN
+from custom_callbacks import PrintLogsCallback, FFTCallback
+from custom_classes import WGAN, CWGAN, EBGAN
 from model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,

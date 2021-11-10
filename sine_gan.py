@@ -17,7 +17,7 @@ from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN, WGAN, CWGAN
+from custom_classes import GAN, WGAN, CWGAN
 from keras_model_functions import plot_recurrence
 from model_architectures.sine_gan_architecture import (make_sine_gan_cnn_discriminator, make_sine_gan_fcc_discriminator,
                                                        make_sine_gan_cnn_generator, make_sine_gan_fcc_generator,

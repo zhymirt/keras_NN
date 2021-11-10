@@ -8,7 +8,7 @@ from tensorflow import keras, cos
 
 from AF_gan import metric_fft_score, normalize_data
 from keras_data import data_to_dataset
-from keras_gan import WGAN
+from custom_classes import WGAN
 
 
 def model_builder(hp):
