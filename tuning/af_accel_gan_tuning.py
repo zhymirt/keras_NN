@@ -91,13 +91,117 @@ def model_builder(hp):
     return wgan
 
 
+def conditional_model_builder(hp: kt.HyperParameters):
+    vector_size, num_frequencies = 5000, 4
+    latent_dimension = hp.Int("latent_dimension_size", 8, 256, 8)
+    num_layers = hp.Int("num_layers", 1, 8, 1)
+    padding_type = [
+        'same', 'same', 'same', 'valid', 'valid', 'same', 'valid', 'valid']
+    # num_filters = [
+    #     16, 32, 64, 128, 256, 512, 1024, 1024
+    # ]
+    discriminator_input_label = layers.Input(shape=(num_frequencies,))
+    # discriminator_label_side = keras.layers.Embedding(num_frequencies, 50)(discriminator_input_label)
+    # discriminator_label_side = layers.Dense(1)(discriminator_input_label)
+    # discriminator_label_side = layers.Reshape((vector_size, 1))(discriminator_label_side)
+
+    discriminator_vector_input = layers.Input((vector_size,))
+    # discriminator_vector_side = layers.Reshape((vector_size, 1))(discriminator_vector_input)
+
+    # discriminator = layers.Concatenate()([discriminator_label_side, discriminator_vector_input])
+    discriminator = layers.Reshape((vector_size, 1))(discriminator_vector_input)
+    # discriminator = layers.Concatenate()([discriminator_label_side, discriminator_vector_side])
+    discriminator = layers.Conv1D(8, 5, strides=5, padding='same')(discriminator)
+    discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(32, 5, strides=5, padding='same')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    for idx in range(num_layers):
+        discriminator = layers.Conv1D(
+            8 * (idx + 1), 3, strides=2,
+            padding=padding_type[idx])(discriminator)
+        discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(16, 3, strides=2, padding='same')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(32, 3, strides=2, padding='same')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(64, 3, strides=2, padding='same')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(128, 3, strides=2, padding='valid')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(256, 3, strides=2, padding='valid')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(512, 3, strides=2, padding='same')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(1024, 3, strides=2, padding='valid')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    # discriminator = layers.Conv1D(1024, 3, strides=2, padding='valid')(discriminator)
+    # discriminator = layers.LeakyReLU(alpha=0.2)(discriminator)
+    discriminator = layers.Flatten()(discriminator)
+    discriminator = layers.Concatenate()([discriminator, discriminator_input_label])
+    discriminator = layers.Dense(1)(discriminator)
+
+    discriminator = keras.Model(inputs=(discriminator_vector_input, discriminator_input_label),
+                                outputs=discriminator, name='conditional_discriminator')
+    mini_data = hp.Choice('mini_data_size', values=[15 * 2**n for n in range(6)])
+    channels = hp.Choice('g_channels', values=[8, 16, 32, 64])
+    generator_input_label = keras.layers.Input(shape=(num_frequencies,))
+    # generator_label_side = keras.layers.Dense(1)(generator_input_label)
+
+    # generator_label_side = keras.layers.Embedding(num_frequencies + 1, 50, input_length=num_frequencies)(generator_input_label)
+    # generator_label_side = layers.Dense(mini_data * channels)(generator_input_label)
+    # generator_label_side = layers.ReLU()(generator_label_side)
+    # generator_label_side = layers.Reshape((mini_data, channels))(generator_label_side)
+
+    generator_vector_input = layers.Input((latent_dimension,))
+    # generator_vector_side = layers.Dense(mini_data * channels)(generator_vector_input)
+    # generator_vector_side = layers.Reshape((mini_data, channels))(generator_vector_side)
+
+    generator = layers.Concatenate()([generator_input_label, generator_vector_input])
+    generator = layers.Dense(mini_data * channels)(generator)
+    generator = layers.Reshape((mini_data, channels))(generator)
+
+    generator = layers.Conv1DTranspose(256, 3, strides=2, padding='valid')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(128, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(64, 3, strides=2, padding='valid')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(32, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    generator = layers.Conv1DTranspose(16, 3, strides=2, padding='same')(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.ReLU()(generator)  # layers.LeakyReLU(alpha=0.2)(generator)
+    # generator = layers.Conv1DTranspose(32, 5, strides=5, padding='same', activation=cos)(generator
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.Conv1DTranspose(8, 3, strides=2, padding='same', activation=cos, use_bias=False)(generator)
+    # generator = layers.BatchNormalization()(generator
+    generator = layers.Conv1DTranspose(1, 5, strides=5, padding='same', activation='tanh', use_bias=False)
+    generator = layers.Reshape((vector_size,))(generator)
+
+    generator = keras.Model(inputs=(generator_vector_input, generator_input_label), outputs=generator,
+                            name='conditional_generator')
+
+    wgan = WGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
+    d_hp_lr = hp.Choice('d_learning_rate', values=[1e-2, 1e-3, 1e-4, 1e-5])
+    g_hp_lr = hp.Choice('g_learning_rate', values=[1e-2, 1e-3, 1e-4, 1e-5])
+    wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=d_hp_lr),
+                 g_optimizer=keras.optimizers.Adam(learning_rate=g_hp_lr),
+                 metrics=[metric_fft_score]
+                 )
+    return wgan
+
+
 def tune_model(model_fn, obj_metric, training_data):
     tuner = kt.Hyperband(model_fn,
                          objective=kt.Objective(obj_metric, direction="min"),
                          max_epochs=32,
                          factor=3,
                          directory='keras_tuning',
-                         project_name='af_accel_tuning'
+                         project_name='conditional_af_accel_tuning'
                          )
     stop_early = tf.keras.callbacks.EarlyStopping(monitor=obj_metric, patience=5)
     tuner.search(training_data, epochs=2, callbacks=[stop_early])
@@ -105,26 +209,17 @@ def tune_model(model_fn, obj_metric, training_data):
     return best_hps, tuner
 
 
-if __name__ == '__main__':
+def main():
     complete_data = load_data_files([os.path.join('../../acceleration_data', name) for name in ('accel_1.csv',
                                                                                              'accel_2.csv',
                                                                                              'accel_3.csv',
                                                                                              'accel_4.csv')],
                                     separate_time=False)
-    # full_time = complete_data[:, :, 0]
-    # full_data, labels = [], []
-    # for example_set in complete_data.transpose((0, 2, 1)):
-    #     for test_num, test in enumerate(example_set[1:]):
-    #         labels.append(test_num + 1)
-    #         full_data.append(test)
-    # full_data, labels = np.array(full_data), np.array(labels)
-    # data_size = full_data.shape[1]
-    # normalized, scalars = normalize_data(full_data)
     prepared_data = prepare_data(complete_data, scaling='normalize', return_labels=False)
     normalized = prepared_data['normalized'].repeat(1e3, axis=0)  # 1e4
     dataset = data_to_dataset(normalized, dtype='float32', batch_size=16, shuffle=True)
     # Train
-    best_hps, tuner = tune_model(model_builder, 'metric_fft_score', dataset)
+    best_hps, tuner = tune_model(conditional_model_builder, 'metric_fft_score', dataset)
     model = tuner.hypermodel.build(best_hps)
     print(dir(best_hps))
     print(best_hps.values)
@@ -135,3 +230,7 @@ if __name__ == '__main__':
     history = model.fit(dataset)
     # for key in best_hps:
     #     print('Best {}: {}'.format(key, best_hps[key]))
+
+
+if __name__ == '__main__':
+    main()
