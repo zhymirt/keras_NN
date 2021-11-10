@@ -14,7 +14,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss, wasserstein_loss_fn, wasserstein_metric_fn)
 from keras_data import data_to_dataset, plot_data, standardize
-from keras_gan import WGAN, cWGAN, FFTCallback
+from keras_gan import WGAN, CWGAN, FFTCallback
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.AF_gan_architecture import (make_AF_discriminator,
                                                      make_AF_generator, make_AF_spectrogram_discriminator_1,
@@ -156,6 +156,7 @@ def plot_data(
         data = np.expand_dims(data, 0)
     if np.ndim(data) < 2 or np.ndim(data) > 3:
         return
+    temp_fig = None
     if np.ndim(data) == 2:
         n_features, n_rows = data.shape[0], 1 if ref_data is None else 2
         temp_fig = plt.figure()
@@ -202,8 +203,8 @@ def plot_data(
 
 
 def generate_generic_training_data(
-        time_frame, num_signals=1, frequencies=[1], amplitudes=[1],
-        h_offsets=[0], v_offsets=[0]):
+        time_frame, num_signals=1, frequencies=(1,), amplitudes=(1,),
+        h_offsets=(0,), v_offsets=(0,)):
     """ Generate and return array of random signals."""
     # should be done in parallel to improve performance
     r_amplitudes = np.random.choice(amplitudes, size=num_signals)
@@ -308,7 +309,7 @@ def denormalize_data(data, norms):
     return resized
 
 
-if __name__ == '__main__':
+def main():
     data_type, batch_size, method = 'float32', 2, 'standard'
     # print(os.getcwd())
     # exit()
@@ -432,3 +433,7 @@ if __name__ == '__main__':
         print(get_fft_score(transformed[0:128].transpose(0, 2, 1), generator.predict(tf.random.normal(shape=(64, latent_dimension))).transpose(0, 2, 1)))  # time,
         plot_data(time, np.transpose(np.array(prediction), (1, 0)), transformed.transpose(0, 2, 1)[0], show=True, save=False,
                   save_path='./results/AF_5_23_21_')
+
+
+if __name__ == '__main__':
+    main()

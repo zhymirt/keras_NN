@@ -4,11 +4,10 @@ import unittest
 import numpy as np
 
 from af_accel_GAN import load_data_files, prepare_data
-from model_architectures.af_accel_GAN_architecture import (make_af_accel_discriminator,
-                                                           make_af_accel_generator,
-                                                           make_conditional_af_accel_discriminator,
-                                                           make_conditional_af_accel_generator,
-                                                           make_af_accel_fcc_generator)
+from model_architectures.af_accel_GAN_architecture import (
+    make_af_accel_discriminator, make_af_accel_generator,
+    make_conditional_af_accel_discriminator,
+    make_conditional_af_accel_generator, make_af_accel_fcc_generator)
 from AF_gan import get_fft_score, normalize_data
 from sine_gan import generate_sine
 
@@ -75,8 +74,8 @@ class AfAccelGANTest(unittest.TestCase):
         # full_time, full_data = complete_data[0:1, :, 2:3], complete_data[1:, :, 2:3]
         print('Full Time shape: {}, Full Data shape: {}'.format(
             full_time.shape, full_data.shape))
-        data_size = full_data.shape[1]
-        normalized, scalars = normalize_data(full_data)
+        # data_size = full_data.shape[1]
+        # normalized, scalars = normalize_data(full_data)
         prepared_data = prepare_data(
             complete_data, scaling='normalize', return_labels=True)
         self.assertTrue(np.array_equal(full_data, prepared_data['data']))

@@ -1,12 +1,10 @@
 import numpy as np
-import scipy as sp
 import tensorflow as tf
 
 from datetime import date
 from math import sqrt
 from statistics import mean
 from numpy import ndarray
-from scipy.fft import fft, fftfreq, rfft, rfftfreq
 from scipy.signal import periodogram
 
 from matplotlib import pyplot as plt
@@ -41,18 +39,18 @@ def rms(vector: ndarray) -> float:
 
 def skewness(vector: ndarray) -> float:
     """ Return skewness of vector."""
-    mean = np.mean(vector)  # precalculate mean for speed
+    average = np.mean(vector)  # precalculate mean for speed
     # number of points minus 1 * the standard deviation squared
-    denom = (len(vector) - 1) * np.std(vector) ** 3
-    return np.sum((vector - mean) ** 3) / denom
+    denominator = (len(vector) - 1) * np.std(vector) ** 3
+    return np.sum((vector - average) ** 3) / denominator
 
 
 def kurtosis(vector: ndarray) -> float:
     """ Return kurtosis of vector."""
-    mean = np.mean(vector) # precalculate mean for speed
+    average = np.mean(vector)  # precalculate mean for speed
     # number of points minus 1 * the standard deviation squared
-    denom = (len(vector) - 1) * np.std(vector) ** 4
-    return np.sum((vector - mean) ** 4) / denom
+    denominator = (len(vector) - 1) * np.std(vector) ** 4
+    return np.sum((vector - average) ** 4) / denominator
 
 
 def crest_factor(vector: ndarray) -> float:

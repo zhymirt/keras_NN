@@ -17,7 +17,7 @@ from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN, WGAN, cWGAN
+from keras_gan import GAN, WGAN, CWGAN
 from keras_model_functions import plot_recurrence
 from model_architectures.sine_gan_architecture import (make_sine_gan_cnn_discriminator, make_sine_gan_fcc_discriminator,
                                                        make_sine_gan_cnn_generator, make_sine_gan_fcc_generator,
@@ -128,7 +128,7 @@ if __name__ == '__main__':
         num_frequencies = 4
         discriminator = make_conditional_sine_gan_cnn_discriminator(vector_size, num_frequencies)
         generator = make_conditional_sine_gan_cnn_generator(latent_dimension, vector_size, num_frequencies)
-        cwgan = cWGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
+        cwgan = CWGAN(discriminator=discriminator, generator=generator, latent_dim=latent_dimension)
         cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
                       g_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
                       # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),

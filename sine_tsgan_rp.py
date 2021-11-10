@@ -13,7 +13,7 @@ from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN, WGAN, cWGAN
+from keras_gan import GAN, WGAN, CWGAN
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.sine_tsgan_rp_architecture import (
     make_sine_wgan_discriminator, make_sine_wgan_generator,
@@ -54,7 +54,7 @@ if __name__=='__main__':
     spectrogram_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.00006),
                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0003)
     )
-    sine_wave_wgan = cWGAN(discriminator=discriminator_2, generator=generator_2, latent_dim=latent_dimension)
+    sine_wave_wgan = CWGAN(discriminator=discriminator_2, generator=generator_2, latent_dim=latent_dimension)
     sine_wave_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0006),
                 g_optimizer=keras.optimizers.Adam(learning_rate=0.0006)
     )

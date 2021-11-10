@@ -38,25 +38,29 @@ def get_recurrence_diff(y_1, y_2):
     return y_1 - y_2
 
 
-if __name__ == '__main__':
+def main():
     plt.close('all')
 
     # X, _, _, _ = load_gunpoint(return_X_y=True)
 
-    xx = np.linspace(0,2,1000)
+    xx = np.linspace(0, 2, 1000)
     yy = np.sin(xx)
 
-    yyy = yy.reshape(1,-1)
+    yyy = yy.reshape(1, -1)
     # (-1, 1) if single feature (1, -1) if single sample
     # Recurrence plot transformation
     rp = RecurrencePlot(threshold='point', percentage=20)
-    X_rp = rp.fit_transform(yyy)
-    XX = X_rp[0]
+    x_rp = rp.fit_transform(yyy)
+    xx_image = x_rp[0]
     # Show the results for the first time series
     plt.figure(figsize=(5, 5))
-    plt.imshow(XX, cmap='binary', origin='lower')
+    plt.imshow(xx_image, cmap='binary', origin='lower')
     plt.title('Recurrence Plot', fontsize=16)
     plt.tight_layout()
     plt.show()
 
     plot_recurrence(yy, rp, single_sample=True, show=True, save=False)
+
+
+if __name__ == '__main__':
+    main()

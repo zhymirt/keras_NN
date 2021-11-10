@@ -192,7 +192,7 @@ class WGAN(GAN):
         return gp
 
 
-class cWGAN(WGAN):
+class CWGAN(WGAN):
     """ Class for conditional WGAN."""
     def train_step(self, data):
         """ Training step iteration for model."""
@@ -415,7 +415,7 @@ class VAE(keras.Model):
         with tf.GradientTape() as tape:
             loss = self.compute_loss(x)
         gradients = tape.gradient(loss, self.trainable_variables)
-        self.compiled_metrics.update_state(x, self(x))
+        self.compiled_metrics.update_state(x, self.call(x))
         metrics = {m.name: m.result() for m in self.metrics}
         self.optimizer.apply_gradients(
             zip(gradients, self.trainable_variables))
@@ -463,7 +463,7 @@ class FFTCallback(tf.keras.callbacks.Callback):
 # class TSGAN(GAN):
 #     pass
 
-if __name__ == '__main__':
+def main():
     # discriminator = keras.Sequential(
     # [
     #     keras.Input(shape=(28, 28, 1)),
@@ -597,3 +597,7 @@ if __name__ == '__main__':
     for _ in range(3):
         plot_data(generator.predict(tf.random.normal(shape=(1, latent_dimension)))[0], show=True)
     plot_data(generator.predict(tf.ones(shape=(1, latent_dimension)))[0], show=True)
+
+
+if __name__ == '__main__':
+    main()

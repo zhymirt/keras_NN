@@ -16,7 +16,7 @@ from keras_model_functions import plot_recurrence
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
 from keras_data import data_to_dataset, plot_data
-from keras_gan import GAN, WGAN, cWGAN
+from keras_gan import GAN, WGAN, CWGAN
 from model_architectures.sine_tsgan_architecture import make_sine_tsgan_discriminator_1, make_sine_tsgan_generator_1, \
     make_sine_tsgan_discriminator_2, make_sine_tsgan_generator_2
 from sine_gan import generate_conditional_image_summary, generate_image_summary, generate_sine, plot_sine
@@ -86,7 +86,7 @@ if __name__ == '__main__':
                              g_loss_fn=GeneratorWassersteinLoss(),
                              d_loss_fn=DiscriminatorWassersteinLoss()
                              )
-    sine_wave_wgan = cWGAN(discriminator=discriminator_2, generator=generator_2, latent_dim=latent_dimension)
+    sine_wave_wgan = CWGAN(discriminator=discriminator_2, generator=generator_2, latent_dim=latent_dimension)
     sine_wave_wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.000006),
                            g_optimizer=keras.optimizers.Adam(learning_rate=0.00006),
                            # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
