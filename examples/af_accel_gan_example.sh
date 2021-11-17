@@ -1,0 +1,1 @@
+python3 af_accel_gan_example.py "$@"
