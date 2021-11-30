@@ -14,6 +14,7 @@ from custom_losses import (DiscriminatorWassersteinLoss,
 from keras_data import plot_data
 
 
+
 def generate_sine(
         start, end, points: int = 100,
         amplitude=1, frequency=1) -> np.ndarray:

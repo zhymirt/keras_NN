@@ -8,6 +8,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import sklearn.preprocessing as preprocessing
 from matplotlib import pyplot as plt
+from scipy import signal
 from tensorflow.keras import layers
 from tensorflow.keras.layers import (BatchNormalization, Dense,
                                      GlobalAveragePooling1D, GlobalMaxPool1D,
@@ -84,6 +85,29 @@ def standardize(vector):
     deviation = std_dev(vector)
     return list(map(lambda x: (x - avg / deviation) if deviation != 0 else 0, vector))
 
+def cross_correlate_mse(dataset, synth):
+    # Only works on synth of 1
+    # index of 0 lag when lengths are equal
+    # lag_0 = synth[0].shape[0] - 1  # length of inner array minus one
+    lag_0 = synth.shape[1] - 1
+    dataset_corr = list()
+    for data_point in dataset:
+        avg = np.average([signal.correlate(data_point, synth_point)[lag_0] for synth_point in synth])
+        dataset_corr.append(avg)
+    dataset_corr = np.array(dataset_corr)
+    # dataset_corr = np.array([signal.correlate(dataset[idx], synth[0])[lag_0] for idx in range(dataset.shape[0])])
+    # print(dataset_corr.shape)
+    # print(dataset_corr)
+    # print(dataset_corr.max())
+    return dataset_corr.max()
+
+
+def auto_correlate_mse(dataset, synth):
+    # Only works on synth of 1
+    dataset_corr = np.array([])
+    synth_corr = None
+    pass
+
 
 if __name__ == '__main__':
     # linux = False
@@ -96,15 +120,15 @@ if __name__ == '__main__':
     #     session = InteractiveSession(config=config)
     start_point, end_point, vector_size = 0, 2, 6000
     conditional, discriminator_mode, generator_mode, verbosity = False, 'cnn', 'cnn', 2
-    latent_dimension, epochs, data_size, batch_size, data_type = 256, 16, int(1e4), 16, 'float32'
+    latent_dimension, epochs, data_size, batch_size, data_type = 256, 8, int(1e4), 8, 'float32'
     save_desc = '__latent_dimension_{}_epochs_{}_data_size_{}_batch_size_{}_type_cnn_cnn'.format(latent_dimension,
                                                                                                  epochs, data_size,
                                                                                                  batch_size)
     early_stop = EarlyStopping(monitor='g_loss', mode='min', min_delta=1e-8, verbose=1, patience=3)
     checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
     tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
-    callback_list = [checkpoint, tb]  # [early_stop, checkpoint]
-    benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=randint(1e4, 1e4), frequency=randint(1, 2)) for _ in
+    callback_list = [checkpoint, tb]  # [etesnarly_stop, checkpoint]
+    benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=1, frequency=randint(1, 5)) for _ in
                    range(int(data_size))]  # generate 100 points of sine wave
     # for idx in range(2):
     #     plot_sine(benign_data[idx], show=True)
@@ -172,18 +196,19 @@ if __name__ == '__main__':
             generator = make_sine_gan_fcc_generator(latent_dimension, vector_size)
         # generator attempts to produce sine wave, discriminator will give score of authenticity
         wgan = WGAN(discriminator=discrim, generator=generator, latent_dim=latent_dimension)
-        wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
-                     g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
+        wgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+                     g_optimizer=keras.optimizers.Adam(learning_rate=0.001),
                      # g_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
                      # d_loss_fn=keras.losses.BinaryCrossentropy(from_logits=True)
                      g_loss_fn=GeneratorWassersteinLoss(),
-                     d_loss_fn=DiscriminatorWassersteinLoss()
+                     d_loss_fn=DiscriminatorWassersteinLoss(), metrics=['accuracy']
                      )
         wgan.set_train_epochs(4, 1)
         wgan.fit(dataset, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
         # generator.save('./models/sine_generator_cnn_freq_1-3')
         # discrim.save('./models/sine_discriminator_cnn_freq_1-3')
         time = np.linspace(start_point, end_point, num=vector_size)
+        print(cross_correlate_mse(np.array([benign_data[0]]), generator.predict(tf.random.normal(shape=(64, latent_dimension)))))
         from pyts.image import RecurrencePlot
 
         rp, trend = RecurrencePlot(), generate_sine(start_point, end_point, vector_size,
