@@ -205,7 +205,7 @@ class CWGAN(WGAN):
             self, real_labels, fake_labels, real_data, fake_data,
             class_labels, data_type='float32'):
         """ Training step for discriminator."""
-        lamb = 10  # tf.constant(10, dtype=data_type)
+        lamb = 20  # tf.constant(10, dtype=data_type)
         for _ in range(self.discriminator_epochs):
             with tf.GradientTape() as tape:
                 # d_loss = self.d_loss_fn(self.discriminator(real_images), self.discriminator(generated))

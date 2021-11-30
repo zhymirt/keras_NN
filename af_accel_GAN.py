@@ -144,6 +144,16 @@ def plot_wasserstein_histogram(data):
     return fig
 
 
+def frequency_wrapper(freq_func, fs):
+    """ Take three parameter frequency function and return two
+        parameter function."""
+    pass
+
+
+def power_spectrum_score(dataset, synth, fs):
+    pass
+
+
 def standard_conditional(
         full_time, data, labels, data_size, data_type,
         latent_dimension, epochs, batch_size):
@@ -170,7 +180,7 @@ def standard_conditional(
     cwgan = CWGAN(
         discriminator=discriminator, generator=generator,
         latent_dim=latent_dimension)
-    cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+    cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.001),
                   g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                   metrics=[metric_fft_score, 'accuracy']
                   )
@@ -352,7 +362,7 @@ def vae(
 def main():
     # Load data
     data_type, conditional, mode = 'float32', True, 'standard'
-    latent_dimension, epochs, batch_size = 10, 64, 32
+    latent_dimension, epochs, batch_size = 24, 64, 1
     folder_name = '../acceleration_data'
     file_names = ['accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv']
     complete_data = load_data_files(

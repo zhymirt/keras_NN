@@ -14,7 +14,7 @@ from sine_gan import generate_sine
 
 class AfAccelGANTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.latent_dim = 10
+        self.latent_dim = 24
         self.vector_size = 5_000
         self.num_freq = 5
 
