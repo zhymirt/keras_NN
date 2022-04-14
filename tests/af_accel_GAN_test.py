@@ -12,11 +12,10 @@ from AF_gan import get_fft_score, normalize_data
 from sine_gan import generate_sine
 
 
-class AfAccelGANTest(unittest.TestCase):
+class AfAccelGANArchitectureTest(unittest.TestCase):
     def setUp(self) -> None:
         self.latent_dim = 10
         self.vector_size = 5_000
-        self.num_freq = 5
 
     def test_fcc_generator_succeeds(self):
         model = make_af_accel_fcc_generator(
@@ -44,16 +43,18 @@ class AfAccelGANTest(unittest.TestCase):
         self.assertTrue(bool(model))
         self.assertEqual(model.output_shape, (None, self.vector_size))
 
-    def test_fft_score(self):
-        wave = generate_sine(0, 5, self.vector_size, 2)
-        print(get_fft_score(np.array([wave]), np.array([wave])))
-        self.assertAlmostEqual(
-            get_fft_score(np.array([wave]), np.array([wave])), 0, 8)
 
-    def test_fft_score_one_dimension(self):
-        wave = np.array(generate_sine(0, 10, 4_000, 1, 4))
-        print(get_fft_score(wave, wave))
-        self.assertAlmostEqual(get_fft_score(wave, wave), 0, 8)
+class AfAccelGANTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.latent_dim = 24
+        self.vector_size = 5_000
+        self.num_freq = 5
+
+    def load_data(self):
+        self.skipTest()
+
+    def load_data_files(self):
+        self.skipTest()
 
     def test_prepare_data_succeeds(self):
         complete_data = load_data_files([
@@ -84,6 +85,27 @@ class AfAccelGANTest(unittest.TestCase):
         # self.assertTrue(np.array_equal(normalized, prepared_data['normalized']))
         # self.assertTrue(np.array_equal(scalars, prepared_data['scalars']))
 
+    def test_average_wasserstein(self):
+        self.skipTest()
+
+    def test_tf_avg_wasserstein(self):
+        self.skipTest()
+
+    def test_fft_score(self):
+        wave = generate_sine(0, 5, self.vector_size, 2)
+        print(get_fft_score(np.array([wave]), np.array([wave])))
+        self.assertAlmostEqual(
+            get_fft_score(np.array([wave]), np.array([wave])), 0, 8)
+
+    def test_fft_score_one_dimension(self):
+        wave = np.array(generate_sine(0, 10, 4_000, 1, 4))
+        print(get_fft_score(wave, wave))
+        self.assertAlmostEqual(get_fft_score(wave, wave), 0, 8)
+
+
+class AfAccelGANModelTest(unittest.TestCase):
+    def test_standard_conditional(self):
+        self.skipTest()
 
 if __name__ == '__main__':
     unittest.main()
