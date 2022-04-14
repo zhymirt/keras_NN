@@ -97,8 +97,7 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
                 labels.append([test_num])
                 full_data.append(test)
     else:
-        print("Cannot complete")
-        return dict()
+        raise NotImplementedError
     full_data, labels = np.array(full_data), np.array(labels)
     returned_values['times'] = full_time
     returned_values['data'] = full_data
@@ -113,6 +112,8 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     #     preprocessing.minmax_scale
     elif scaling == 'standardize':
         returned_values['normalized'] = preprocessing.scale(full_data, axis=1)
+    else:
+        raise NotImplementedError('Scaling version not allowed.')
     return returned_values
 
 
@@ -149,25 +150,39 @@ def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     return fig
 
 
+def frequency_wrapper(freq_func, fs):
+    """ Take three parameter frequency function and return two
+        parameter function."""
+    pass
+
+
+def power_spectrum_score(dataset, synth, fs):
+    pass
+
+
 def standard_conditional(
         full_time, data, labels, data_size, data_type,
         latent_dimension, epochs, batch_size):
     """ Model with standard conditional architecture."""
-    # Preparation
+    # TODO Split into prep, train, eval functions
+    # Make labels
     mlb = MultiLabelBinarizer()
     new_labels = mlb.fit_transform(labels)
-    print('Classes: {}'.format(mlb.classes_))
-    print('labels shape: {}, new labels shape: {}'.format(
-        labels.shape, new_labels.shape))
+    print(f'Classes: {mlb.classes_}')
+    print(f'labels shape: {labels.shape}, new labels shape: {new_labels.shape}')
+    # Reused variables
     data = data.astype(data_type)
+    num_tests = 4
     repeat = int(4e3)
+    # Make more copies of reference data
     data_repeat = data.repeat(repeat, axis=0)  # 1e4
     new_labels = new_labels.repeat(repeat, axis=0)
+    # Sprinkle in random noise
     data_repeat = data_repeat + tf.random.normal(
         shape=data_repeat.shape, stddev=1e-10, dtype=data_type)
-    num_tests = 4
     # normalized = tf.convert_to_tensor(normalized)
     # new_labels = tf.convert_to_tensor(new_labels)
+    # Make models
     discriminator = make_conditional_af_accel_discriminator(
         data_size, num_tests)
     generator = make_conditional_af_accel_generator(
@@ -175,7 +190,7 @@ def standard_conditional(
     cwgan = CWGAN(
         discriminator=discriminator, generator=generator,
         latent_dim=latent_dimension)
-    cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+    cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.001),
                   g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
                   metrics=[metric_fft_score, 'accuracy']
                   )
@@ -232,6 +247,7 @@ def standard(
         full_time, data, data_size, data_type,
         latent_dimension, epochs, batch_size):
     """ Standard model for training."""
+    # TODO make train and eval functions for each to further compartmentalize
     data_repeat = data.repeat(3e3, axis=0)  # 1e4
     print('Normalized shape: {}'.format(data_repeat.shape))
     dataset = data_to_dataset(data_repeat, dtype=data_type, batch_size=batch_size, shuffle=True)
@@ -355,19 +371,19 @@ def vae(
 
 
 def main():
-    # Load data
+    # Model parameters
     data_type, conditional, mode = 'float32', True, 'standard'
-    latent_dimension, epochs, batch_size = 10, 64, 32
-    folder_name = '../acceleration_data'
+    latent_dimension, epochs, batch_size = 24, 64, 1
+    # Load data
+    folder_name = os.path.join(os.pardir, 'acceleration_data')
     file_names = ['accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv']
     complete_data = load_data_files(
         [os.path.join(folder_name, name) for name in file_names],
         separate_time=False)
-    full_time = complete_data[:, :, 0]
     data_dict = prepare_data(complete_data, scaling='normalize', return_labels=True)
     # Making variables for loaded data
+    full_time = data_dict['times']
     full_data, labels = np.array(data_dict['data']), np.array(data_dict['labels'])
-    # exit()
     data_size = full_data.shape[1]
     normalized, scalars = data_dict['normalized'], data_dict['scalars']
     # Running chosen model
@@ -385,7 +401,9 @@ def main():
             full_time, normalized, data_size, data_type, latent_dimension,
             epochs, batch_size)
     if mode == 'vae':
-        vae(full_time, normalized, data_size, data_type, latent_dimension, epochs, batch_size)
+        vae(
+            full_time, normalized, data_size, data_type, latent_dimension,
+            epochs, batch_size)
 
 
 if __name__ == '__main__':
