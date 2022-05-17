@@ -83,12 +83,21 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     -------
     dict: Contains keys ['data', 'times', 'labels', 'normalized', 'scalars']
     """
+    try:
+        print(f'Number of dimensions: {complete.ndim}')
+        print(f'Shape: {complete.shape}')
+        if not (complete.ndim == 2 or complete.ndim == 3):
+            raise AssertionError
+    except AssertionError:
+        print(f'Array must be ndim 2 or 3, not {complete.ndim}')
+        raise
     returned_values, full_data, labels = dict(), list(), list()
     # print('Complete shape: {}'.format(complete.shape))
     full_time = complete[:, :, 0]
     data_start, data_end = 1, 5
     # print('Full time shape: {}'.format(full_time.shape))
     if complete.ndim == 2:
+        full_time = complete[:, 0]
         for test_num, test in enumerate(
                 complete.transpose((1, 0))[data_start:data_end], start=1):
             # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
@@ -96,6 +105,7 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
             labels.append([test_num])
             full_data.append(test)
     elif complete.ndim == 3:
+        full_time = complete[:, :, 0]
         for example_set in complete.transpose((0, 2, 1)):
             for test_num, test in enumerate(
                     example_set[data_start:data_end], start=1):
