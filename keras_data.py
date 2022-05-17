@@ -70,7 +70,7 @@ def impulse_factor(vector: ndarray) -> float:
 
 def frequency_center(vector: ndarray, time_step: float) -> float:
     """ Return frequency center of vector."""
-    frequencies, power = periodogram(vector, 1/time_step)
+    frequencies, power = periodogram(vector, 1/time_step, scaling='spectrum')
     numerator = np.sum(power * frequencies)
     denominator = np.sum(power)
     return numerator / denominator
@@ -78,14 +78,14 @@ def frequency_center(vector: ndarray, time_step: float) -> float:
 
 def root_mean_square_frequency(vector: ndarray, time_step: float) -> float:
     """ Return root mean square frequency."""
-    frequencies, power_spectrum = periodogram(vector, 1/time_step)
+    frequencies, power_spectrum = periodogram(vector, 1/time_step, scaling='spectrum')
     return np.sqrt(np.sum(frequencies**2 * power_spectrum)
                    / np.sum(power_spectrum))
 
 
 def root_variance_frequency(vector: ndarray, time_step: float) -> float:
     """ Return root variance frequency."""
-    frequencies, power_spectrum = periodogram(vector, 1 / time_step)
+    frequencies, power_spectrum = periodogram(vector, 1 / time_step, scaling='spectrum')
     freq_center = calc_frequency_center(power_spectrum, frequencies)
     return np.sqrt(np.sum(((frequencies - freq_center) ** 2) * power_spectrum)
                    / np.sum(power_spectrum))
