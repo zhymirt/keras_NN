@@ -141,9 +141,14 @@ def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     """ Plot histogram for wasserstein scores of data.
         Expects list of size two containing values."""
     fig = plt.figure()
-    plt.hist(
-        [np.squeeze(data[0]), np.squeeze(data[1])],
-        label=['real data scores', 'synthetic data scores'])
+    # plt.hist(
+    #     [np.squeeze(data[0]), np.squeeze(data[1])],
+    #     label=['real data scores', 'synthetic data scores'])
+    plt.subplot(1, 2, 1)
+    plt.hist(np.squeeze(data[0]), label='real data scores')
+    plt.legend()
+    plt.subplot(1, 2, 2)
+    plt.hist(np.squeeze(data[1]), label='synthetic data scores')
     plt.legend()
     plt.tight_layout()
     return fig
@@ -153,6 +158,41 @@ def frequency_wrapper(freq_func, fs):
     """ Take three parameter frequency function and return two
         parameter function."""
     pass
+
+
+def plot_power_spectrum(data, fs):
+    """ Plot power spectrum for multiple signals."""
+    # Check that one or many signals
+    # if one
+    if np.ndim(data) == 1:
+        plt.figure()
+        frequencies, power = scipy.signal.periodogram(data, fs)
+        plt.plot(frequencies, power)
+    # if many
+    elif np.ndim(data) == 2:
+        for signal in data:
+            plt.figure()
+            frequencies, power = scipy.signal.periodogram(signal, fs)
+            plt.plot(frequencies, power)
+    plt.show()
+    # plt.semilogy()
+
+
+def plot_spectrogram(data, fs):
+    """ Plot spectrograms for multiple signals."""
+    # Check that one or many signals
+    # if one
+    if np.ndim(data) == 1:
+        plt.figure()
+        frequencies, times, spectrogram = scipy.signal.spectrogram(data, fs=fs, window=('tukey', 0.95))
+        plt.pcolormesh(times, frequencies, spectrogram)
+    # if many
+    elif np.ndim(data) == 2:
+        for signal in data:
+            plt.figure()
+            frequencies, times, spectrogram = scipy.signal.spectrogram(signal, fs)
+            plt.pcolormesh(times, frequencies, spectrogram)
+    plt.show()
 
 
 def power_spectrum_score(dataset, synth, fs):
