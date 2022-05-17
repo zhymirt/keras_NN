@@ -44,6 +44,9 @@ def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
 def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndarray:
     """ Return array of data loaded in from text file.
 
+    :param filenames: List[str]
+    :param separate_time: bool = True
+    :return: np.ndarray
 
     Parameters
     ----------
@@ -66,6 +69,10 @@ def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndar
 def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool = False) -> dict:
     """ Reorganize data to usable shape and return as parts in dictionary.
 
+    :param complete: np.ndarray
+    :param scaling: str = None
+    :param return_labels: bool = False
+    :return: dict
     Parameters
     ----------
     complete: np.ndarray - Array of data, including time column
