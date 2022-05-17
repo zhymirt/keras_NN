@@ -44,11 +44,11 @@ class GAN(keras.Model):
         random_latent_vectors = tf.random.normal(shape=(
             batch_size, self.latent_dim))
         generated = self.generator(random_latent_vectors)
-        combined = tf.concat([real_images, generated], axis=0)
-
-        labels = tf.concat(
-            [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0
-        )
+        # combined = tf.concat([real_images, generated], axis=0)
+        #
+        # labels = tf.concat(
+        #     [tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0
+        # )
         fakes_labels = tf.ones((batch_size, 1))
         d_loss = self.train_discriminator(
             tf.ones(shape=(batch_size, 1)),
@@ -157,7 +157,7 @@ class WGAN(GAN):
         This loss is calculated on an interpolated image
         and added to the discriminator loss.
         """
-        batch_size = tf.shape(gp_data)[0]
+        # batch_size = tf.shape(gp_data)[0]
         # Get the interpolated image
 
         with tf.GradientTape() as gp_tape:
@@ -236,7 +236,7 @@ class CWGAN(WGAN):
         This loss is calculated on an interpolated image
         and added to the discriminator loss.
         """
-        batch_size = tf.shape(gp_data)[0]
+        # batch_size = tf.shape(gp_data)[0]
         # Get the interpolated image
 
         with tf.GradientTape() as gp_tape:
@@ -311,7 +311,7 @@ class EBGAN(GAN):
             gp_tape.watch(data)
             pred = self.discriminator.encoder(data)
         grads = gp_tape.gradient(pred, [data])[0]
-        batch_size = tf.cast(tf.shape(data)[0], data.dtype)
+        # batch_size = tf.cast(tf.shape(data)[0], data.dtype)
         length, sum_loss = grads.shape[0], 0.0
         for a in range(length):
             for b in range(length):
@@ -355,7 +355,8 @@ class VAE(keras.Model):
         mean, logvar = tf.split(encoded, num_or_size_splits=2, axis=1)
         return mean, logvar
 
-    def reparameterize(self, mean, logvar):
+    @staticmethod
+    def reparameterize(mean, logvar):
         eps = tf.random.normal(shape=mean.shape, dtype=mean.dtype)
         return eps * tf.exp(logvar * .5) + mean
 
@@ -366,7 +367,8 @@ class VAE(keras.Model):
             return probs
         return logits
 
-    def log_normal_pdf(self, sample, mean, logvar, raxis=1):
+    @staticmethod
+    def log_normal_pdf(sample, mean, logvar, raxis=1):
         log2pi = tf.math.log(2. * np.pi)
         return tf.reduce_sum(
           -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar
@@ -391,7 +393,7 @@ class VAE(keras.Model):
         """
         if isinstance(x, tuple):
             x = x[0]
-        data_type = x.dtype
+        # data_type = x.dtype
         # batch_size = tf.shape(x)[0]
         with tf.GradientTape() as tape:
             loss = self.compute_loss(x)
