@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 
 from datetime import date
 from math import sqrt
@@ -7,13 +6,14 @@ from statistics import mean
 from numpy import ndarray
 from scipy.signal import periodogram
 
-from matplotlib import pyplot as plt
+
+# TODO split these for modularity with imports
 
 
 def std_dev(vector):
     """ Return standard deviation of a vector."""
     if vector is None or len(vector) == 0:
-        return 0
+        return 0  # TODO raise error here
     size = len(vector)
     avg = sum(vector)/size
     return sqrt(sum(list(map(lambda x: (x - avg)**2, vector)))/size)
@@ -117,34 +117,6 @@ def calc_root_variance_frequency(
     # return np.sqrt(np.mean((fft - mean) ** 2))
 
 
-def plot_data(
-        x_values, y_values, trend_data=None, show=False,
-        save=True, save_path=''):
-    """ Plot (x, y) pairs, plot secondary trendline if provided."""
-    plt.plot(x_values, y_values)
-    if trend_data is not None and len(trend_data) > 0:
-        plt.plot(x_values, trend_data)
-    if save and save_path:
-        plt.savefig(save_path)
-    if show:
-        plt.show()
-    plt.close()
-
-
-def data_to_dataset(data, dtype='float32', batch_size=64, shuffle=True):
-    """ Return dataset given numpy data."""
-    dataset = tf.data.Dataset.from_tensor_slices(tf.cast(data, dtype=dtype))
-    if shuffle:
-        dataset = dataset.shuffle(buffer_size=1024).batch(batch_size)
-    return dataset
-
-
-def load_model(path):
-    """ Load and return model at given path."""
-    model = tf.keras.models.load_model(path)
-    return model
-
-
 def load_data(path):
     """ Load and return numpy data at given path."""
     data = np.load(path)
@@ -152,8 +124,8 @@ def load_data(path):
 
 
 def get_date_string():
-    """ Return date string for today's date."""
-    return date.today()
+    """ Return date string for today's date in year-month-day format."""
+    return str(date.today())
 
 # def save_data(path, data, compress=False):
 #     if compress:

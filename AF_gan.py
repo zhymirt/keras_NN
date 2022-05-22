@@ -13,7 +13,9 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 from custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss, wasserstein_loss_fn, wasserstein_metric_fn)
-from keras_data import data_to_dataset, plot_data, standardize
+from keras_data import standardize
+from utils.matplotlib_utils import plot_data
+from utils.tensorflow_utils import data_to_dataset
 from custom_callbacks import FFTCallback
 from custom_classes import WGAN, CWGAN
 from keras_model_functions import get_recurrence, plot_recurrence
@@ -28,6 +30,7 @@ save_paths = list(map(lambda x: 'time_' + x, keys[1:]))
 def read_file(filename):
     """ Read file at given filename and return dictionary of lists composed
      of floats from file"""
+    # TODO use np.loadtxt()
     # data = {
     #   'time': [], 'accel': [], 'intaccel': [], 'sg1': [],
     #   'sg2': [], 'sg3': []}
@@ -318,7 +321,7 @@ def main():
         read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
                                                                                   'T04repeat.txt', 'T05.txt', 'T06.txt',
                                                                                   'T07.txt', 'T08.txt']]
-    benign_data = np.array(benign_data[0:]) # Training on one example to narrow down issue
+    benign_data = np.array(benign_data[0:])  # Training on one example to narrow down issue
     # time, benign_data = np.load('../signal_data/time_np.npy'), np.concatenate(
     #     [[np.load(os.path.join('../signal_data', name + '_np.npy'))] for name in ['T04',
     #                                                                               'T04repeat', 'T05', 'T06', 'T07',
