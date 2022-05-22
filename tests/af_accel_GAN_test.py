@@ -1,9 +1,13 @@
 import os
 import unittest
+from unittest.mock import mock_open, patch, Mock
 
 import numpy as np
+from matplotlib import pyplot as plt
 
-from af_accel_GAN import load_data_files, prepare_data
+import af_accel_GAN
+from af_accel_GAN import load_data_files, prepare_data, plot_power_spectrum, plot_spectrogram, \
+    plot_wasserstein_histogram, load_data
 from model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
@@ -14,7 +18,7 @@ from sine_gan import generate_sine
 
 class AfAccelGANArchitectureTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.latent_dim = 10
+        self.latent_dim = 24
         self.vector_size = 5_000
 
     def test_fcc_generator_succeeds(self):
@@ -43,6 +47,32 @@ class AfAccelGANArchitectureTest(unittest.TestCase):
         self.assertTrue(bool(model))
         self.assertEqual(model.output_shape, (None, self.vector_size))
 
+    @patch('af_accel_GAN.np', spec=True)
+    def test_load_data_time_separate(self, mock_load):
+        mock_load.loadtxt.return_value = np.asarray([[0, 0, 1, 0], [1, 0, 1, 0],
+                                                     [0, 0, 0, 1], [1, 1, 1, 1]])
+        time, data = af_accel_GAN.load_data('fake_path.txt', True)
+        print(dir(mock_load))
+        mock_load.loadtxt.assert_called_with('fake_path.txt', delimiter=',', skiprows=2)
+        self.assertTrue(np.array_equal(time, [0, 1, 0, 1]))
+        self.assertTrue(np.array_equal(data, [[0, 1, 0], [0, 1, 0],
+                                              [0, 0, 1], [1, 1, 1]]))
+
+    @patch('af_accel_GAN.np', spec=True)
+    def test_load_data_time_not_separate(self, mock_load):
+        mock_load.loadtxt.return_value = np.asarray([[0, 0, 1], [1, 0, 1],
+                                                     [0, 0, 0], [1, 1, 1]])
+        full = af_accel_GAN.load_data('fake_path.txt', False)
+        mock_load.loadtxt.assert_called_with('fake_path.txt', delimiter=',', skiprows=2)
+        self.assertTrue(np.array_equal(full, [[0, 0, 1], [1, 0, 1],
+                                              [0, 0, 0], [1, 1, 1]]))
+        print(full.shape)
+
+    def test_fft_score(self):
+        wave = generate_sine(0, 5, self.vector_size, 2)
+        print(get_fft_score(np.array([wave]), np.array([wave])))
+        self.assertAlmostEqual(
+            get_fft_score(np.array([wave]), np.array([wave])), 0, 8)
 
 class AfAccelGANTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -56,34 +86,38 @@ class AfAccelGANTest(unittest.TestCase):
     def load_data_files(self):
         self.skipTest()
 
+    def test_plot_power_spectrum(self):
+        start, end = 0, 5
+        fs = self.vector_size / (end - start)
+        wave = generate_sine(start, end, self.vector_size, 2)
+        wave2 = generate_sine(start, end, self.vector_size, 2, 4)
+        waves = np.asarray((wave, wave2))
+        plot_power_spectrum(wave, fs)
+        plot_power_spectrum(waves, fs)
+
+    def test_plot_spectrogram(self):
+        start, end = 0, 5
+        fs = self.vector_size / (end - start)
+        wave = generate_sine(start, end, self.vector_size, 2)
+        wave2 = generate_sine(start, end, self.vector_size, 2, 4)
+        waves = np.asarray((wave, wave2))
+        plot_spectrogram(wave, fs)
+        plot_spectrogram(waves, fs)
+
     def test_prepare_data_succeeds(self):
-        complete_data = load_data_files([
-            os.path.join('../../acceleration_data', name) for name in (
-                'accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv')],
-                                        separate_time=False)
-        full_time = complete_data[:, :, 0]
-        full_data, labels = [], []
-        print('Full time shape: {}'.format(full_time.shape))
-        for example_set in complete_data.transpose((0, 2, 1)):
-            for test_num, test in enumerate(example_set[1:5]):
-                # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
-                labels.append(test_num + 1)
-                full_data.append(test)
-        full_data, labels = np.array(full_data), np.array(labels)
-        # exit()
-        # print('Complete shape: {}'.format(complete_data.shape))
-        # full_time, full_data = complete_data[0:1, :, 2:3], complete_data[1:, :, 2:3]
-        print('Full Time shape: {}, Full Data shape: {}'.format(
-            full_time.shape, full_data.shape))
-        # data_size = full_data.shape[1]
-        # normalized, scalars = normalize_data(full_data)
+        # Mimic rough idea of shape for getting data, multiply so norm is different
+        complete_data = np.ones(shape=(4, 20, 7)) * 3
+        # Time is all zeros now
+        complete_data[:, :, 0] = 0
         prepared_data = prepare_data(
             complete_data, scaling='normalize', return_labels=True)
-        self.assertTrue(np.array_equal(full_data, prepared_data['data']))
-        self.assertTrue(np.array_equal(full_time, prepared_data['times']))
-        # self.assertTrue(np.array_equal(labels, prepared_data['labels']))
+        np.testing.assert_array_equal(prepared_data['data'], np.ones(shape=(17, 20))*3)
+        self.assertTrue(np.array_equal(prepared_data['times'], np.zeros(shape=(4, 20))))
+        self.assertTrue('labels' in prepared_data)
+        self.assertTrue(np.array_equal(prepared_data['labels'], [[1], [2], [3], [4]]*4))
         # self.assertTrue(np.array_equal(normalized, prepared_data['normalized']))
         # self.assertTrue(np.array_equal(scalars, prepared_data['scalars']))
+
 
     def test_average_wasserstein(self):
         self.skipTest()
@@ -106,6 +140,13 @@ class AfAccelGANTest(unittest.TestCase):
 class AfAccelGANModelTest(unittest.TestCase):
     def test_standard_conditional(self):
         self.skipTest()
+
+    def test_plot_wasserstein_histogram(self):
+        data = np.random.normal(0, 1, (2, 1024))
+        fig_num = plot_wasserstein_histogram(data)
+        self.assertTrue(fig_num)
+        plt.show()
+
 
 if __name__ == '__main__':
     unittest.main()

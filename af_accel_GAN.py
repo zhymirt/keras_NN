@@ -40,6 +40,9 @@ def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
 def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndarray:
     """ Return array of data loaded in from text file.
 
+    :param filenames: List[str]
+    :param separate_time: bool = True
+    :return: np.ndarray
 
     Parameters
     ----------
@@ -58,6 +61,10 @@ def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndar
 def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool = False) -> dict:
     """ Reorganize data to usable shape and return as parts in dictionary.
 
+    :param complete: np.ndarray
+    :param scaling: str = None
+    :param return_labels: bool = False
+    :return: dict
     Parameters
     ----------
     complete: np.ndarray - Array of data, including time column
@@ -68,14 +75,24 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     -------
     dict: Contains keys ['data', 'times', 'labels', 'normalized', 'scalars']
     """
+    try:
+        print(f'Number of dimensions: {complete.ndim}')
+        print(f'Shape: {complete.shape}')
+        if not (complete.ndim == 2 or complete.ndim == 3):
+            raise AssertionError
+    except AssertionError:
+        print(f'Array must be ndim 2 or 3, not {complete.ndim}')
+        raise
     returned_values, full_data, labels = dict(), list(), list()
     data_start, data_end = 1, 5
     if complete.ndim == 2:
+        full_time = complete[:, 0]
         for test_num, test in enumerate(
                 complete.transpose((1, 0))[data_start:data_end], start=1):
             labels.append([test_num])
             full_data.append(test)
     elif complete.ndim == 3:
+        full_time = complete[:, :, 0]
         for example_set in complete.transpose((0, 2, 1)):
             for test_num, test in enumerate(
                     example_set[data_start:data_end], start=1):
@@ -127,9 +144,14 @@ def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     """ Plot histogram for wasserstein scores of data.
         Expects list of size two containing values."""
     fig = plt.figure()
-    plt.hist(
-        [np.squeeze(data[0]), np.squeeze(data[1])],
-        label=['real data scores', 'synthetic data scores'])
+    # plt.hist(
+    #     [np.squeeze(data[0]), np.squeeze(data[1])],
+    #     label=['real data scores', 'synthetic data scores'])
+    plt.subplot(1, 2, 1)
+    plt.hist(np.squeeze(data[0]), label='real data scores')
+    plt.legend()
+    plt.subplot(1, 2, 2)
+    plt.hist(np.squeeze(data[1]), label='synthetic data scores')
     plt.legend()
     plt.tight_layout()
     return fig
@@ -141,16 +163,51 @@ def frequency_wrapper(freq_func, fs):
     pass
 
 
-def power_spectrum_score(dataset, synth, fs):
-    pass
-
-
 def save_gan(
         generator, discriminator, save_folder=None, generator_path=None,
         discriminator_path=None):
     folder = save_folder if save_folder is None else os.curdir
     generator.save(os.path.join(folder, generator_path))
     discriminator.save(os.path.join(folder, discriminator_path))
+
+
+def plot_power_spectrum(data, fs):
+    """ Plot power spectrum for multiple signals."""
+    # Check that one or many signals
+    # if one
+    if np.ndim(data) == 1:
+        plt.figure()
+        frequencies, power = scipy.signal.periodogram(data, fs)
+        plt.plot(frequencies, power)
+    # if many
+    elif np.ndim(data) == 2:
+        for signal in data:
+            plt.figure()
+            frequencies, power = scipy.signal.periodogram(signal, fs)
+            plt.plot(frequencies, power)
+    plt.show()
+    # plt.semilogy()
+
+
+def plot_spectrogram(data, fs):
+    """ Plot spectrograms for multiple signals."""
+    # Check that one or many signals
+    # if one
+    if np.ndim(data) == 1:
+        plt.figure()
+        frequencies, times, spectrogram = scipy.signal.spectrogram(data, fs=fs, window=('tukey', 0.95))
+        plt.pcolormesh(times, frequencies, spectrogram)
+    # if many
+    elif np.ndim(data) == 2:
+        for signal in data:
+            plt.figure()
+            frequencies, times, spectrogram = scipy.signal.spectrogram(signal, fs)
+            plt.pcolormesh(times, frequencies, spectrogram)
+    plt.show()
+
+
+def power_spectrum_score(dataset, synth, fs):
+    pass
 
 
 def standard_conditional(
