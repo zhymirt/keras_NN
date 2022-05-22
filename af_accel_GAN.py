@@ -12,10 +12,11 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from typing import List
 from scipy.stats import wasserstein_distance
 from AF_gan import (normalize_data, denormalize_data, metric_fft_score,
-                    get_fft_score, get_cross_correlate_score, plot_data,
-                    plot_correlations, plot_recurrence_diff)
+                    get_fft_score, get_cross_correlate_score, plot_correlations, plot_recurrence_diff)
+from utils.matplotlib_utils import plot_data
 from custom_losses import ebgan_loss_fn
-from keras_data import data_to_dataset, get_date_string
+from keras_data import get_date_string
+from utils.tensorflow_utils import data_to_dataset
 from custom_callbacks import PrintLogsCallback, FFTCallback
 from custom_classes import WGAN, CWGAN, EBGAN
 from model_architectures.af_accel_GAN_architecture import (
@@ -33,12 +34,7 @@ def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
         :param separate_time: bool = True
         :return: np.ndarray"""
     fn_data = np.loadtxt(filename, delimiter=',', skiprows=2)
-
     return (fn_data[:, 0], fn_data[:, 1:]) if separate_time else fn_data
-    # if separate_time:
-    #     return fn_data[:, 0], fn_data[:, 1:]
-    # else:
-    #     return fn_data
 
 
 def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndarray:
@@ -54,13 +50,9 @@ def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndar
     -------
 
     """
-    fn_data = np.array([load_data(name, separate_time=False) for name in filenames])
-
+    fn_data = np.array(
+        [load_data(name, separate_time=False) for name in filenames])
     return (fn_data[:, :, 0], fn_data[:, :, 1:]) if separate_time else fn_data
-    # if separate_time:
-    #     return fn_data[:, :, 0], fn_data[:, :, 1:]
-    # else:
-    #     return fn_data
 
 
 def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool = False) -> dict:
@@ -77,29 +69,22 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     dict: Contains keys ['data', 'times', 'labels', 'normalized', 'scalars']
     """
     returned_values, full_data, labels = dict(), list(), list()
-    # print('Complete shape: {}'.format(complete.shape))
-    full_time = complete[:, :, 0]
     data_start, data_end = 1, 5
-    # print('Full time shape: {}'.format(full_time.shape))
     if complete.ndim == 2:
         for test_num, test in enumerate(
                 complete.transpose((1, 0))[data_start:data_end], start=1):
-            # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
-            # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
             labels.append([test_num])
             full_data.append(test)
     elif complete.ndim == 3:
         for example_set in complete.transpose((0, 2, 1)):
             for test_num, test in enumerate(
                     example_set[data_start:data_end], start=1):
-                # if np.sum(np.square(test)) > 1e-8: # numbers aren't all zero
-                # print('Test #{} shape: {}'.format(test_num + 1, test.shape))
                 labels.append([test_num])
                 full_data.append(test)
     else:
         raise NotImplementedError
     full_data, labels = np.array(full_data), np.array(labels)
-    returned_values['times'] = full_time
+    returned_values['times'] = complete[:, :, 0]
     returned_values['data'] = full_data
     if return_labels:
         returned_values['labels'] = labels
@@ -160,29 +145,25 @@ def power_spectrum_score(dataset, synth, fs):
     pass
 
 
+def save_gan(
+        generator, discriminator, save_folder=None, generator_path=None,
+        discriminator_path=None):
+    folder = save_folder if save_folder is None else os.curdir
+    generator.save(os.path.join(folder, generator_path))
+    discriminator.save(os.path.join(folder, discriminator_path))
+
+
 def standard_conditional(
         full_time, data, labels, data_size, data_type,
         latent_dimension, epochs, batch_size):
     """ Model with standard conditional architecture."""
     # TODO Split into prep, train, eval functions
     # Make labels
+    data = data.astype(data_type)  # should be done ahead of time
     mlb = MultiLabelBinarizer()
-    new_labels = mlb.fit_transform(labels)
-    print(f'Classes: {mlb.classes_}')
-    print(f'labels shape: {labels.shape}, new labels shape: {new_labels.shape}')
-    # Reused variables
-    data = data.astype(data_type)
-    num_tests = 4
-    repeat = int(4e3)
-    # Make more copies of reference data
-    data_repeat = data.repeat(repeat, axis=0)  # 1e4
-    new_labels = new_labels.repeat(repeat, axis=0)
-    # Sprinkle in random noise
-    data_repeat = data_repeat + tf.random.normal(
-        shape=data_repeat.shape, stddev=1e-10, dtype=data_type)
-    # normalized = tf.convert_to_tensor(normalized)
-    # new_labels = tf.convert_to_tensor(new_labels)
+    training_data = standard_conditional_data_prep(mlb, labels, data, data_type)
     # Make models
+    num_tests = len(mlb.classes_)  # 4 This might be wrong, but we'll find out during testing, number of classes
     discriminator = make_conditional_af_accel_discriminator(
         data_size, num_tests)
     generator = make_conditional_af_accel_generator(
@@ -192,54 +173,90 @@ def standard_conditional(
         latent_dim=latent_dimension)
     cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.001),
                   g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
-                  metrics=[metric_fft_score, 'accuracy']
-                  )
+                  metrics=[metric_fft_score, 'accuracy'])
     cwgan.set_train_epochs(5, 1)
     # Pre train eval
-    temp_label = mlb.transform([(1, 3)])
-    generator.predict(
-        (tf.zeros(shape=(1, latent_dimension)), tf.constant(temp_label)))
+    standard_conditional_pre_eval(generator, training_data[0:128], latent_dimension, mlb, data_type)
+    # Train model
     early_stop = EarlyStopping(
         monitor='wasserstein_score', mode='min', min_delta=1e-6, verbose=1,
         patience=5, restore_best_weights=True)
-    print('FFT Score before training: {}'.format(
-        get_fft_score(
-            data_repeat[0:128],
-            generator.predict((tf.random.normal(shape=(1, latent_dimension)),
-                               tf.constant(mlb.transform([[1, 3]]), dtype=data_type))))))  # time,
-    # Train model
-    cwgan.fit((data_repeat, new_labels), epochs=epochs, batch_size=batch_size,
+    cwgan.fit(training_data, epochs=epochs, batch_size=batch_size,
               callbacks=[FFTCallback(), early_stop], shuffle=True)
     # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
+    # save_gan(generator, discriminator, )
     # generator.save('./models/conditional_af_accel_generator_v3')
     # discriminator.save('./models/conditional_af_accel_discriminator_v3')
     # Eval
     rp = RecurrencePlot()
     eval_size = 64
     eval_labels = np.random.randint(0, 1, (eval_size, num_tests))
-    prediction = generator.predict((tf.random.normal(shape=(eval_size, latent_dimension)), eval_labels))
+    standard_conditional_eval(
+        generator, full_time, data, latent_dimension, eval_labels, mlb,
+        eval_size, num_tests, data_type)
+
+
+def standard_conditional_data_prep(mlb, labels, data, data_type=None):
+    """ Data preparation for standard_conditional()"""
+    new_labels = mlb.fit_transform(labels)
+    print(f'Classes: {mlb.classes_}')
+    print(f'labels shape: {labels.shape}, new labels shape: {new_labels.shape}')
+    # Reused variables
+    repeat = int(4e3)
+    # Make more copies of reference data
+    data_repeat = data.repeat(repeat, axis=0)  # 1e4
+    new_labels = new_labels.repeat(repeat, axis=0)
+    # Sprinkle in random noise
+    data_repeat = data_repeat + tf.random.normal(
+        shape=data_repeat.shape, stddev=1e-10, dtype=data_type)
+    # normalized = tf.convert_to_tensor(normalized)
+    # new_labels = tf.convert_to_tensor(new_labels)
+    training_data = (data_repeat, new_labels)
+    return training_data
+
+
+def standard_conditional_pre_eval(generator, data, latent_dimension, mlb, data_type=None):
+    """ Pre-evaluation for standard conditional."""
+    temp_label = mlb.transform([(1, 3)])
+    generator.predict(
+        (tf.zeros(shape=(1, latent_dimension)), tf.constant(temp_label)))
+    print('FFT Score before training: {}'.format(
+        get_fft_score(
+            data[0:128],
+            generator.predict((tf.random.normal(shape=(1, latent_dimension)),
+                               tf.constant(mlb.transform([[1, 3]]), dtype=data_type))))))  # time,
+
+
+def standard_conditional_train():
+    """ Training steps for standard conditional."""
+    pass
+
+
+def standard_conditional_eval(
+        generator, full_time, data, latent_dimension, labels, mlb, size, num_classes, data_type=None):
+    """ Evaluation for standard conditional."""
+    prediction = generator.predict((tf.random.normal(shape=(size, latent_dimension)), labels))
     # recurrence difference plot
-    plot_recurrence_diff(data[eval_labels[0]], prediction[0])
+    plot_recurrence_diff(data[labels[0]], prediction[0])
     # plt.show()
-    plot_correlations(data[eval_labels[0]], prediction[0])
+    plot_correlations(data[labels[0]], prediction[0])
     # plt.show()
-    print(get_cross_correlate_score(data[0:eval_size], prediction))
+    print(get_cross_correlate_score(data[0:size], prediction))
     print(get_fft_score(data[0:128], prediction[0:64]))  # time,
-    for idx in range(num_tests):
+    for idx in range(num_classes):
         print('Current test: {}'.format(idx + 1))
         prediction = generator.predict(
             (tf.random.normal(shape=(4, latent_dimension)),
              tf.constant(mlb.transform([[idx + 1]]*4), dtype=data_type)))
         plot_data(
             full_time[idx], prediction,
-            data[idx * num_tests: (idx * num_tests + 4)], show=False,
+            data[idx * num_classes: (idx * num_classes + 4)], show=False,
             save=False, save_path='./results/AF_5_23_21_')
     prediction = generator.predict(
         (tf.random.normal(shape=(1, latent_dimension)),
          tf.constant(mlb.transform([[1, 3]]), dtype=data_type)))
     plot_data(full_time[0], prediction, data[0], show=False,
               save=False, save_path='./results/AF_5_23_21_')
-
     plt.show()
 
 
@@ -275,13 +292,14 @@ def standard(
                                 discriminator.predict(generator.predict(
                                     tf.random.normal(shape=(64, latent_dimension))))])
     wgan.fit(dataset, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
+    # Saving models
+    # generator.save('models/af_accel_generator_full_new')
+    # discriminator.save('models/af_accel_discriminator_full_new')
+    # Eval
     plot_wasserstein_histogram([discriminator.predict(data[0:data.shape[0]]),
                                 discriminator.predict(generator.predict(
                                     tf.random.normal(shape=(64, latent_dimension))))])
     plt.show()
-    # Saving models
-    # generator.save('models/af_accel_generator_full_new')
-    # discriminator.save('models/af_accel_discriminator_full_new')
     rp = RecurrencePlot()
     prediction = generator.predict(tf.random.normal(shape=(64, latent_dimension)))
     # recurrence difference plot
