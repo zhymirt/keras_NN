@@ -445,6 +445,30 @@ def vae(
         save=False, save_path='./results/AF_5_23_21_')
 
 
+def run_model(mode, time, data, data_size, data_type, latent_dim, epochs, batch_size, labels=None):
+    """ Run a model chosen by mode."""
+    conditional = labels is not None
+    if mode == 'standard':
+        if conditional:
+            standard_conditional(
+                time, data, labels, data_size, data_type,
+                latent_dim, epochs, batch_size)
+        else:
+            standard(
+                time, data, data_size, data_type,
+                latent_dim, epochs, batch_size)
+    if mode == 'ebgan':
+        ebgan(
+            time, data, data_size, data_type, latent_dim,
+            epochs, batch_size)
+    if mode == 'vae':
+        vae(
+            time, data, data_size, data_type, latent_dim,
+            epochs, batch_size)
+    else:
+        raise NotImplementedError('The mode {mode} is not a valid model option.')
+
+
 def main():
     # Model parameters
     data_type, conditional, mode = 'float32', True, 'standard'
@@ -462,23 +486,10 @@ def main():
     data_size = full_data.shape[1]
     normalized, scalars = data_dict['normalized'], data_dict['scalars']
     # Running chosen model
-    if mode == 'standard':
-        if conditional:
-            standard_conditional(
-                full_time, normalized, labels, data_size, data_type,
-                latent_dimension, epochs, batch_size)
-        else:
-            standard(
-                full_time, normalized, data_size, data_type,
-                latent_dimension, epochs, batch_size)
-    if mode == 'ebgan':
-        ebgan(
-            full_time, normalized, data_size, data_type, latent_dimension,
-            epochs, batch_size)
-    if mode == 'vae':
-        vae(
-            full_time, normalized, data_size, data_type, latent_dimension,
-            epochs, batch_size)
+    run_model(
+            mode, full_time, normalized, data_size, data_type,
+            latent_dimension, epochs, batch_size,
+            labels=(labels if conditional else None))
 
 
 if __name__ == '__main__':
