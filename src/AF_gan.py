@@ -14,8 +14,8 @@ from custom_losses import (DiscriminatorWassersteinLoss,
 from keras_data import standardize
 from utils.matplotlib_utils import plot_data
 from utils.tensorflow_utils import data_to_dataset
-from custom_callbacks import FFTCallback
-from custom_classes import WGAN, CWGAN
+from custom_functions.custom_callbacks import FFTCallback
+from custom_functions.custom_classes import WGAN
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.AF_gan_architecture import (make_AF_discriminator,
                                                      make_AF_generator, make_AF_spectrogram_discriminator_1,
@@ -315,8 +315,8 @@ def main():
     data_type, batch_size, method = 'float32', 2, 'standard'
     # print(os.getcwd())
     # exit()
-    time, benign_data = read_file_to_arrays('../signal_data/T04.txt')[0], [
-        read_file_to_arrays(os.path.join('../signal_data', name))[1] for name in ['T04.txt',
+    time, benign_data = read_file_to_arrays('../../signal_data/T04.txt')[0], [
+        read_file_to_arrays(os.path.join('../../signal_data', name))[1] for name in ['T04.txt',
                                                                                   'T04repeat.txt', 'T05.txt', 'T06.txt',
                                                                                   'T07.txt', 'T08.txt']]
     benign_data = np.array(benign_data[0:])  # Training on one example to narrow down issue

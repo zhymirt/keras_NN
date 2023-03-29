@@ -10,10 +10,11 @@ from pyts.image.recurrence import RecurrencePlot
 from tensorflow.keras import layers, mixed_precision
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 
-from custom_losses import (DiscriminatorWassersteinLoss,
+from custom_functions.custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
-from keras_data import data_to_dataset, plot_data
-from custom_classes import GAN, WGAN, CWGAN
+from utils.matplotlib_utils import plot_data
+from utils.tensorflow_utils import data_to_dataset
+from custom_functions.custom_classes import GAN, WGAN, CWGAN
 from keras_model_functions import get_recurrence, plot_recurrence
 from model_architectures.sine_tsgan_rp_architecture import (
     make_sine_wgan_discriminator, make_sine_wgan_generator,
@@ -29,8 +30,8 @@ if __name__=='__main__':
     latent_dimension, epochs, data_size, batch_size, data_type = 256, 32, int(1e4), 8, 'float32'
     save_desc = '__latent_dimension_{}_epochs_{}_data_size_{}_batch_size_{}_type_cnn_cnn'.format(latent_dimension, epochs, data_size, batch_size)
     early_stop = EarlyStopping(monitor='d_loss', mode='min', verbose=1, patience=3)
-    checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
-    tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
+    checkpoint = ModelCheckpoint(filepath='tmp/checkpoint', save_weights_only=True)
+    tb = keras.callbacks.TensorBoard(log_dir='log_dir', histogram_freq=1)
     callback_list = [checkpoint] # [early_stop, checkpoint, tb]
     benign_data, labels = [], []
     for _ in range(int(data_size)):

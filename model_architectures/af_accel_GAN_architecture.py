@@ -2,7 +2,7 @@ import tensorflow.keras as keras
 from tensorflow import cos as cos
 from tensorflow.keras import layers
 
-from custom_classes import Autoencoder, VAE, Sampling
+from custom_functions.custom_classes import Autoencoder, VAE, Sampling
 
 
 def make_af_accel_discriminator(vector_size, summary=False, data_type='float32'):

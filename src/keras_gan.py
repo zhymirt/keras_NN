@@ -8,11 +8,10 @@ from random import randint
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from custom_classes import GAN
-from custom_losses import (DiscriminatorWassersteinLoss,
-                           GeneratorWassersteinLoss)
-from keras_data import plot_data
-
+from custom_functions.custom_classes import GAN
+from custom_functions.custom_losses import (DiscriminatorWassersteinLoss,
+                                            GeneratorWassersteinLoss)
+from utils.matplotlib_utils import plot_data
 
 
 def generate_sine(

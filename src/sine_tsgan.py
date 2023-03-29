@@ -13,10 +13,11 @@ from tensorflow.keras.layers import Conv1D, Flatten, Reshape
 from tensorflow.keras import mixed_precision
 from keras_model_functions import plot_recurrence
 
-from custom_losses import (DiscriminatorWassersteinLoss,
+from custom_functions.custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
-from keras_data import data_to_dataset, plot_data
-from custom_classes import GAN, WGAN, CWGAN
+from utils.matplotlib_utils import plot_data
+from utils.tensorflow_utils import data_to_dataset
+from custom_functions.custom_classes import GAN, WGAN, CWGAN
 from model_architectures.sine_tsgan_architecture import make_sine_tsgan_discriminator_1, make_sine_tsgan_generator_1, \
     make_sine_tsgan_discriminator_2, make_sine_tsgan_generator_2
 from sine_gan import generate_conditional_image_summary, generate_image_summary, generate_sine, plot_sine
@@ -33,7 +34,7 @@ if __name__ == '__main__':
                                                                                                 epochs, data_size,
                                                                                                 batch_size)
     early_stop = EarlyStopping(monitor='d_loss', mode='min', verbose=1, patience=3)
-    checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
+    checkpoint = ModelCheckpoint(filepath='tmp/checkpoint', save_weights_only=True)
     callback_list = [checkpoint]  # [early_stop, checkpoint]
     benign_data, labels = [], []
     for idx in range(int(data_size)):
@@ -120,4 +121,4 @@ if __name__ == '__main__':
     trend = generate_sine(start_point, end_point, vector_size)
     generate_conditional_image_summary(generator_2, generator_1.predict(tf.random.normal(shape=(1, latent_dimension))),
                                        latent_dimension, time, 3, True, trend, show=True, save=True,
-                                       save_dir='./results', save_desc='4_23_21_tsgan_512_epochs')
+                                       save_dir='results', save_desc='4_23_21_tsgan_512_epochs')

@@ -4,7 +4,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.python.keras.losses import cosine_similarity
 
-from custom_losses import wasserstein_loss_fn, wasserstein_metric_fn
+from custom_functions.custom_losses import wasserstein_loss_fn, wasserstein_metric_fn
 
 
 class GAN(keras.Model):

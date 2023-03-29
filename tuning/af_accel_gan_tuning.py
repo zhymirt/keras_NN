@@ -1,7 +1,6 @@
 import os
 
 import keras_tuner as kt
-import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import MultiLabelBinarizer
 from tensorflow.keras import layers
@@ -9,9 +8,8 @@ from tensorflow import keras, cos
 
 from AF_gan import metric_fft_score, normalize_data
 from af_accel_GAN import load_data_files, prepare_data
-from keras_data import data_to_dataset
-from custom_classes import WGAN, CWGAN
-from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, make_af_accel_generator
+from custom_functions.custom_classes import WGAN, CWGAN
+from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator
 
 
 def model_builder(hp):

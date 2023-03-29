@@ -15,10 +15,11 @@ from tensorflow.keras.layers import (BatchNormalization, Dense,
                                      LeakyReLU)
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 
-from custom_losses import (DiscriminatorWassersteinLoss,
+from custom_functions.custom_losses import (DiscriminatorWassersteinLoss,
                            GeneratorWassersteinLoss)
-from keras_data import data_to_dataset, plot_data
-from custom_classes import GAN, WGAN, CWGAN
+from utils.matplotlib_utils import plot_data
+from utils.tensorflow_utils import data_to_dataset
+from custom_functions.custom_classes import GAN, WGAN, CWGAN
 from keras_model_functions import plot_recurrence
 from model_architectures.sine_gan_architecture import (make_sine_gan_cnn_discriminator, make_sine_gan_fcc_discriminator,
                                                        make_sine_gan_cnn_generator, make_sine_gan_fcc_generator,
@@ -27,6 +28,7 @@ from model_architectures.sine_gan_architecture import (make_sine_gan_cnn_discrim
 
 
 def generate_sine(start, end, points, amplitude=1, frequency=1):
+    """ Generate and return sine wave signal."""
     time = np.linspace(start, end, points)
     signal = amplitude * np.sin(2 * np.pi * frequency * time)
     return signal
@@ -125,8 +127,8 @@ if __name__ == '__main__':
                                                                                                  epochs, data_size,
                                                                                                  batch_size)
     early_stop = EarlyStopping(monitor='g_loss', mode='min', min_delta=1e-8, verbose=1, patience=3)
-    checkpoint = ModelCheckpoint(filepath='./tmp/checkpoint', save_weights_only=True)
-    tb = keras.callbacks.TensorBoard(log_dir='./log_dir', histogram_freq=1)
+    checkpoint = ModelCheckpoint(filepath='tmp/checkpoint', save_weights_only=True)
+    tb = keras.callbacks.TensorBoard(log_dir='log_dir', histogram_freq=1)
     callback_list = [checkpoint, tb]  # [etesnarly_stop, checkpoint]
     benign_data = [generate_sine(start_point, end_point, vector_size, amplitude=1, frequency=randint(1, 5)) for _ in
                    range(int(data_size))]  # generate 100 points of sine wave
@@ -182,7 +184,7 @@ if __name__ == '__main__':
                   save=False, save_path='./results/sine_ones' + save_desc)
         generate_conditional_image_summary(generator=generator, conditional_data=tf.constant([1]), time=time,
                                            latent_dim_size=latent_dimension, num_rand_images=3, show=True, save=False,
-                                           save_dir='./results', save_desc=save_desc, plot_trend=True,
+                                           save_dir='results', save_desc=save_desc, plot_trend=True,
                                            trend_signal=trend)
         exit()
     else:
@@ -217,7 +219,7 @@ if __name__ == '__main__':
                         save_name='5_7_21_sine_gan_freq_1-3_recurrence')
         generate_image_summary(generator=generator, time=time, latent_dim_size=latent_dimension, num_rand_images=3,
                                show=True, save=False,
-                               save_dir='./results', save_desc='5_7_21_freq_1-3_' + save_desc, plot_trend=True, trend_signal=trend)
+                               save_dir='results', save_desc='5_7_21_freq_1-3_' + save_desc, plot_trend=True, trend_signal=trend)
         # plot_sine(scaler.inverse_transform(generator.predict(tf.zeros(shape=(1, latent_dimension))))[0], time, show=True, save=False, save_path='./results/sine_zeros' + save_desc)
         # # plot_sine(standardize(generator.predict(tf.zeros(shape=(1, latent_dimension))))[0], time, show=True, save=False)
         # for idx in range(3):
