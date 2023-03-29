@@ -9,8 +9,6 @@ from pyts.image.recurrence import RecurrencePlot
 from tensorflow import keras
 from tensorflow.keras.callbacks import EarlyStopping
 
-from custom_losses import (DiscriminatorWassersteinLoss,
-                           GeneratorWassersteinLoss, wasserstein_loss_fn, wasserstein_metric_fn)
 from keras_data import standardize
 from utils.matplotlib_utils import plot_data
 from utils.tensorflow_utils import data_to_dataset
@@ -258,6 +256,7 @@ def get_cross_correlate_score(dataset, synth):
 
 def get_fft_score(dataset, synth):
     """ Return FFT score."""
+    # TODO, one dimensional versions not allowed, not sure how to rectify
     # Get ffts
     synth_fft, data_fft = scipy.fft.fft(np.array(synth)), scipy.fft.fft(np.array(dataset))
     min_diffs = list()

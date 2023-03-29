@@ -22,7 +22,7 @@ from model_architectures.sine_tsgan_rp_architecture import (
 from sine_gan import (generate_conditional_image_summary,
                       generate_image_summary, generate_sine, plot_sine)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     # Equivalent to the two lines above from tensorflow
     # mixed_precision.set_global_policy('mixed_float16')
 
@@ -79,4 +79,4 @@ if __name__=='__main__':
     sine_wave_wgan.fit((benign_data, synthetic_spectrograms), epochs=epochs, batch_size=batch_size, callbacks=callback_list)
     trend = generate_sine(start_point, end_point, vector_size)
     generate_conditional_image_summary(generator_2, generator_1.predict(tf.random.normal(shape=(1, latent_dimension))),
-             latent_dimension, time, 3, True, trend, show=True, save=False, save_dir='./results', save_desc='4_9_21_tsgan_512_epochs')
+                                       latent_dimension, time, 3, True, trend, show=True, save=False, save_dir='results', save_desc='4_9_21_tsgan_512_epochs')
