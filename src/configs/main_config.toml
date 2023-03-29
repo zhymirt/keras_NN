@@ -1,0 +1,20 @@
+title = "main config"
+
+[training_mode]
+mode = "standard"
+conditional = true
+
+[model_hyperparameters]
+latent_dimension = 24
+epochs = 64
+batch_size = 1
+
+[data]
+data_type = "float32"
+#root_folder = "../acceleration_data/"
+#file_names = ["accel_1.csv", "accel_2.csv", "accel_3.csv", "accel_4.csv"]
+dir = "../data/processed_data"
+data = "af_accel_normalized_data.npy"
+time = "af_accel_time.npy"
+labels = "af_accel_labels.npy"
+processed = false
