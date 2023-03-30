@@ -4,36 +4,45 @@ import numpy as np
 import scipy
 import tensorflow as tf
 
-from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 from matplotlib import pyplot as plt
 from pyts.image import RecurrencePlot
 from sklearn import preprocessing
-from tensorflow import keras
 from sklearn.preprocessing import MultiLabelBinarizer
+from tensorflow import keras
+from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 from typing import List
 from scipy.stats import wasserstein_distance
+
+from utils.matplotlib_utils import plot_data
+from utils.tensorflow_utils import data_to_dataset
 from AF_gan import (normalize_data, denormalize_data, metric_fft_score,
                     get_fft_score, get_cross_correlate_score, plot_correlations, plot_recurrence_diff)
-from utils.matplotlib_utils import plot_data
-from custom_losses import ebgan_loss_fn
+from constants.af_accel_constants import STANDARD_MODE, EBGAN_MODE, VAE_MODE, H_PARAMS, CONFIG_DATA, DTYPE, LATENT_DIM, \
+    EPOCHS, DATA_DIR, DATA_PATH, TIME_PATH, LABEL_PATH, DATA_LENGTH, BATCH_SIZE
+from scoring import tf_avg_wasserstein, average_wasserstein
 from keras_data import get_date_string
-from utils.tensorflow_utils import data_to_dataset
-from custom_callbacks import PrintLogsCallback, FFTCallback
-from custom_classes import WGAN, CWGAN, EBGAN
+from sine_gan import generate_sine
+from custom_functions.custom_losses import ebgan_loss_fn
+from custom_functions.custom_callbacks import PrintLogsCallback, FFTCallback
+from custom_functions.custom_classes import WGAN, CWGAN, EBGAN
 from model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
     make_conditional_af_accel_generator, make_af_accel_fcc_generator,
     make_fcc_autoencoder, make_cnn_autoencoder,
     make_fcc_variationalautoencoder)
+from utils.toml_utils import load_toml
 
 
 def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
     """ Return data loaded in from text file.
 
-        :param filename: str
-        :param separate_time: bool = True
-        :return: np.ndarray"""
+        :param filename: Filepath to load in
+        :type filename: str
+        :param bool separate_time: Whether to return time as separate array. Defaults to True
+        :return: Return table of data, or tuple of time and data if separate_time is True
+        :rtype: np.ndarray or tuple[np.ndarray, np.ndarray]
+        """
     fn_data = np.loadtxt(filename, delimiter=',', skiprows=2)
     return (fn_data[:, 0], fn_data[:, 1:]) if separate_time else fn_data
 
@@ -41,9 +50,11 @@ def load_data(filename: str, separate_time: bool = True) -> np.ndarray:
 def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndarray:
     """ Return array of data loaded in from text file.
 
-    :param filenames: List[str]
-    :param separate_time: bool = True
-    :return: np.ndarray
+    :param filenames: List of file paths to load data
+    :type filenames: List[str]
+    :param bool separate_time: Whether to return time as separate array. Defaults to True
+    :return: Return table of data, or tuple of time and data if separate_time is True
+    :rtype: np.ndarray or tuple[np.ndarray, np.ndarray]
 
     Parameters
     ----------
@@ -62,10 +73,13 @@ def load_data_files(filenames: List[str], separate_time: bool = True) -> np.ndar
 def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool = False) -> dict:
     """ Reorganize data to usable shape and return as parts in dictionary.
 
-    :param complete: np.ndarray
-    :param scaling: str = None
-    :param return_labels: bool = False
-    :return: dict
+    :param np.ndarray complete: Complete array of time and data
+    :param scaling: str or None. Defaults to None
+    :param bool return_labels: Whether to include labels in dictionary. Defaults to False
+    :return: Dictionary of data with keys: ['data', 'times', 'labels', 'normalized', 'scalars']
+    :rtype: dict
+    :raises AssertionError: Array has incompatible number of dimensions
+    :raises NotImplementedError: scaling string given that is not implemented.
     Parameters
     ----------
     complete: np.ndarray - Array of data, including time column
@@ -76,14 +90,10 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     -------
     dict: Contains keys ['data', 'times', 'labels', 'normalized', 'scalars']
     """
-    try:
-        print(f'Number of dimensions: {complete.ndim}')
-        print(f'Shape: {complete.shape}')
-        if not (complete.ndim == 2 or complete.ndim == 3):
-            raise AssertionError
-    except AssertionError:
-        print(f'Array must be ndim 2 or 3, not {complete.ndim}')
-        raise
+    # print(f'Number of dimensions: {complete.ndim}')
+    # print(f'Shape: {complete.shape}')
+    if not (complete.ndim == 2 or complete.ndim == 3):
+        raise AssertionError(f'Array must be ndim 2 or 3, not {complete.ndim}')
     returned_values, full_data, labels = dict(), list(), list()
     data_start, data_end = 1, 5
     if complete.ndim == 2:
@@ -102,8 +112,8 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     else:
         raise NotImplementedError
     full_data, labels = np.array(full_data), np.array(labels)
-    returned_values['times'] = complete[:, :, 0]
-    returned_values['data'] = full_data
+    returned_values['times']: np.ndarray = full_time  # complete[:, :, 0]
+    returned_values['data']: np.ndarray = full_data
     if return_labels:
         returned_values['labels'] = labels
     if scaling is None:
@@ -135,15 +145,36 @@ def average_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> float:
         # print(distances)
         return np.asarray(distances).mean()
 
-
-def tf_avg_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> tf.float32:
-    """ Wrap average_wasserstein function and return result."""
-    return tf.py_function(average_wasserstein, (arr_1, arr_2), tf.float32)
+# def average_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> float:
+#     """ Calculate average wasserstein distance between two arrays."""
+#     arr_1, arr_2 = np.asarray(arr_1), np.asarray(arr_2)
+#     # print('Array shapes: {}, {}'.format(arr_1.shape, arr_2.shape))
+#     if arr_1.ndim == 1:
+#         return wasserstein_distance(arr_1, arr_2)
+#     elif arr_1.ndim == 2:
+#         distances = [wasserstein_distance(item_1, item_2)
+#                      for item_1, item_2 in zip(arr_1, arr_2)]
+#         # distances = list()
+#         # for item_1, item_2 in zip(arr_1, arr_2):
+#         #     distances.append(scipy.stats.wasserstein_distance(item_1, item_2))
+#         # print(distances)
+#         return np.asarray(distances).mean()
+#
+#
+# def tf_avg_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> tf.float32:
+#     """ Wrap average_wasserstein function and return result."""
+#     return tf.py_function(average_wasserstein, (arr_1, arr_2), tf.float32)
 
 
 def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     """ Plot histogram for wasserstein scores of data.
-        Expects list of size two containing values."""
+
+        Expects list of size two containing values.
+
+        :param np.ndarray data: Data to be plotted. First dimension is [real, generated], second is data
+        :return: Variable referencing matplotlib figure
+        :rtype: plt.Figure
+    """
     fig = plt.figure()
     # plt.hist(
     #     [np.squeeze(data[0]), np.squeeze(data[1])],
@@ -158,22 +189,48 @@ def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     return fig
 
 
-def frequency_wrapper(freq_func, fs):
-    """ Take three parameter frequency function and return two
-        parameter function."""
-    pass
+# def frequency_wrapper(freq_func, fs):
+#     """ Take three parameter frequency function and return two
+#         parameter function.
+#         """
+#     pass
 
 
+# TODO This function should be a class method
 def save_gan(
         generator, discriminator, save_folder=None, generator_path=None,
         discriminator_path=None):
+    """ Save GAN to folder.
+
+        Paths can be empty, but None is not allowed right now
+
+        :param generator: Generator model to save
+        :type generator: tf.keras.Model
+        :param discriminator: Discriminator model to be saved
+        :type discriminator: tf.keras.Model
+        :param save_folder: Root folder for discriminator and generator
+        :type save_folder: None or str
+        :param generator_path: Path to save generator
+        :type generator_path: None or str
+        :param discriminator_path: Path to save discriminator
+        :type discriminator_path: None or str
+    """
     folder = save_folder if save_folder is None else os.curdir
     generator.save(os.path.join(folder, generator_path))
     discriminator.save(os.path.join(folder, discriminator_path))
 
 
 def plot_power_spectrum(data, fs):
-    """ Plot power spectrum for multiple signals."""
+    """ Plot power spectrum for multiple signals.
+
+    :param data: Data to plot. Can have one or two dimensions
+    :type data: np.ndarray
+    :param fs: Sampling frequency for data
+    :type fs: float
+    :returns: None
+    :rtype: None
+    """
+    # TODO instead of checking one or many signals, make singles expand themselves
     # Check that one or many signals
     # if one
     if np.ndim(data) == 1:
@@ -191,7 +248,8 @@ def plot_power_spectrum(data, fs):
 
 
 def plot_spectrogram(data, fs):
-    """ Plot spectrograms for multiple signals."""
+    """ Plot spectrograms for multiple signals.
+    """
     # Check that one or many signals
     # if one
     if np.ndim(data) == 1:
@@ -215,7 +273,6 @@ def standard_conditional(
         full_time, data, labels, data_size, data_type,
         latent_dimension, epochs, batch_size):
     """ Model with standard conditional architecture."""
-    # TODO Split into prep, train, eval functions
     # Make labels
     data = data.astype(data_type)  # should be done ahead of time
     mlb = MultiLabelBinarizer()
@@ -245,6 +302,12 @@ def standard_conditional(
     # save_gan(generator, discriminator, )
     # generator.save('./models/conditional_af_accel_generator_v3')
     # discriminator.save('./models/conditional_af_accel_discriminator_v3')
+    # save_gan(
+    #     generator, discriminator, '../model/af_sine',
+    #     'conditional_af_accel_generator_v1',
+    #     'conditional_af_accel_discriminator_v1')
+    generator.save('../models/af_sine/conditional_af_accel_generator_v1')
+    discriminator.save('../models/af_sine/conditional_af_accel_discriminator_v1')
     # Eval
     rp = RecurrencePlot()
     eval_size = 64
@@ -254,7 +317,7 @@ def standard_conditional(
         eval_size, num_tests, data_type)
 
 
-def standard_conditional_data_prep(mlb, labels, data, data_type=None):
+def standard_conditional_data_prep(mlb: MultiLabelBinarizer, labels, data, data_type=None):
     """ Data preparation for standard_conditional()"""
     new_labels = mlb.fit_transform(labels)
     print(f'Classes: {mlb.classes_}')
@@ -324,7 +387,7 @@ def standard(
     """ Standard model for training."""
     # TODO make train and eval functions for each to further compartmentalize
     data_repeat = data.repeat(3e3, axis=0)  # 1e4
-    print('Normalized shape: {}'.format(data_repeat.shape))
+    print(f'Normalized shape: {data_repeat.shape}')
     dataset = data_to_dataset(data_repeat, dtype=data_type, batch_size=batch_size, shuffle=True)
 
     discriminator = make_af_accel_discriminator(data_size, data_type=data_type)
@@ -526,7 +589,7 @@ def main():
     data_type, conditional, mode = 'float32', True, 'standard'
     latent_dimension, epochs, batch_size = 24, 64, 1
     # Load data
-    folder_name = os.path.join(os.pardir, 'acceleration_data')
+    folder_name = os.path.join(os.pardir, os.pardir, 'acceleration_data')
     file_names = ['accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv']
     complete_data = load_data_files(
         [os.path.join(folder_name, name) for name in file_names],
