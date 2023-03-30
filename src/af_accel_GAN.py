@@ -401,8 +401,8 @@ def ebgan(
     ebgan_model.compile(
         d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
         g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
-        d_loss_fn=tf.keras.losses.mean_squared_error,
-        g_loss_fn=tf.keras.losses.mean_squared_error,
+        d_loss_fn=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM),
+        g_loss_fn=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM),
         metrics=[metric_fft_score, tf_avg_wasserstein, 'g_loss'])
     ebgan_model.fit(
         norm_repeat, epochs=64, batch_size=batch_size, shuffle=True,
