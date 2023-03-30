@@ -1,3 +1,4 @@
+import argparse
 import os
 import numpy as np
 import scipy
@@ -445,8 +446,23 @@ def vae(
         save=False, save_path='./results/AF_5_23_21_')
 
 
-def run_model(mode, time, data, data_size, data_type, latent_dim, epochs, batch_size, labels=None):
-    """ Run a model chosen by mode."""
+def run_model(
+        mode, time, data, data_size, data_type, latent_dim, epochs, batch_size, labels=None):
+    """ Train a model chosen by mode with given hyperparameters.
+
+        :param str mode: Which model mode to run. Current options: [standard, ebgan, or vae]
+        :param ndarray time:
+        :param ndarray data:
+        :param int data_size:
+        :param data_type:
+        :type data_type:
+        :param int latent_dim:
+        :param int epochs:
+        :param int batch_size:
+        :param labels:
+        :type labels:
+        :return: None
+        """
     conditional = labels is not None
     if mode == 'standard':
         if conditional:
@@ -466,7 +482,43 @@ def run_model(mode, time, data, data_size, data_type, latent_dim, epochs, batch_
             time, data, data_size, data_type, latent_dim,
             epochs, batch_size)
     else:
-        raise NotImplementedError('The mode {mode} is not a valid model option.')
+        raise NotImplementedError(f'The mode {mode} is not a valid model option.')
+
+
+def get_args():
+    """ Parse command line."""
+    # todo add ability to save models and results
+    parse = argparse.ArgumentParser()
+    parse.add_argument(
+        'mode', choices=[STANDARD_MODE, EBGAN_MODE, VAE_MODE], default=STANDARD_MODE)
+    parse.add_argument('--conditional', action='store_true')  # Is model conditional
+    parse.add_argument('--prepare_data', action='store_true')  # This calls prepare_data() which expects a specific file
+    parse.add_argument('config_file')  # Path to config file
+    parse.add_argument('--make_paths', action='store_true')  # Make directories if they don't exist
+    args = parse.parse_args()
+    config_table = load_toml(args.config_file)
+    config_data = config_table[CONFIG_DATA]
+    config_hp = config_table[H_PARAMS]
+    # Data and time and labels will depend on version
+    # Assume data, time, and labels are separate files
+    # TODO check if files are numpy files, else do some work
+    data_dir = config_data[DATA_DIR]
+    data = np.load(os.path.join(data_dir, config_data[DATA_PATH]))
+    time = np.load(os.path.join(data_dir, config_data[TIME_PATH]))
+    if args.conditional:
+        labels = np.load(os.path.join(data_dir, config_data[LABEL_PATH]))
+        run_model(
+            args.mode, time, data, DATA_LENGTH, config_data[DTYPE],
+            config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE],
+            labels)
+    else:
+        run_model(
+            args.mode, time, data, DATA_LENGTH, config_data[DTYPE],
+            config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE])
+
+
+def get_hyperparameters(config_file):
+    pass
 
 
 def main():
@@ -493,4 +545,6 @@ def main():
 
 
 if __name__ == '__main__':
+    get_args()
+    exit()
     main()
