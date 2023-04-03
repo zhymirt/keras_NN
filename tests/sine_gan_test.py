@@ -1,7 +1,7 @@
 import unittest
 from unittest import TestCase
 
-from model_architectures.sine_gan_architecture import make_sine_gan_fcc_discriminator, make_sine_gan_fcc_generator, \
+from src.model_architectures.sine_gan_architecture import make_sine_gan_fcc_discriminator, make_sine_gan_fcc_generator, \
     make_sine_gan_cnn_discriminator, make_sine_gan_cnn_generator, make_conditional_sine_gan_cnn_discriminator, \
     make_conditional_sine_gan_cnn_generator
 

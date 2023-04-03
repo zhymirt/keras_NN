@@ -1,19 +1,18 @@
-import os
 import unittest
-from unittest.mock import mock_open, patch, Mock
+from unittest.mock import patch
 
 import numpy as np
 from matplotlib import pyplot as plt
 
-import af_accel_GAN
-from af_accel_GAN import load_data_files, prepare_data, plot_power_spectrum, plot_spectrogram, \
-    plot_wasserstein_histogram, load_data
-from model_architectures.af_accel_GAN_architecture import (
+from src import af_accel_GAN
+from src.af_accel_GAN import prepare_data, plot_power_spectrum, plot_spectrogram, \
+    plot_wasserstein_histogram
+from src.model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
     make_conditional_af_accel_generator, make_af_accel_fcc_generator)
-from AF_gan import get_fft_score, normalize_data
-from sine_gan import generate_sine
+from src.AF_gan import get_fft_score
+from src.sine_gan import generate_sine
 
 
 class AfAccelGANArchitectureTest(unittest.TestCase):

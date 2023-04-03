@@ -6,9 +6,9 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow import keras, cos
 
-from AF_gan import metric_fft_score, normalize_data
-from keras_data import data_to_dataset
-from custom_classes import WGAN
+from src.AF_gan import metric_fft_score, normalize_data
+from src.keras_data import data_to_dataset
+from src.custom_functions.custom_classes import WGAN
 
 
 def model_builder(hp):

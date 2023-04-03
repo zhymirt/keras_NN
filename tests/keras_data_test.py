@@ -4,14 +4,12 @@ import unittest
 
 import numpy as np
 
-from keras_data import abs_mean, frequency_center
-from keras_data import rms, root_mean_square_frequency
-from keras_data import root_variance_frequency, skewness, crest_factor
+from src.keras_data import frequency_center
+from src.keras_data import rms, root_mean_square_frequency
+from src.keras_data import skewness, crest_factor
 from numpy import sqrt
-from sine_gan import generate_sine
+from src.sine_gan import generate_sine
 from unittest import TestCase
-
-from matplotlib import pyplot as plt
 
 
 class StatisticsTestCase(TestCase):

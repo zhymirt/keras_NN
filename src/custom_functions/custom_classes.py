@@ -281,7 +281,7 @@ class EBGAN(GAN):
         self.compiled_metrics.update_state(
             real_images, self.generator(random_latent_vectors))
         metrics = {m.name: m.result() for m in self.metrics}
-        my_metrics = {'Reconstruction error': g_loss}
+        my_metrics = {'g_loss': g_loss, 'Reconstruction error': g_loss}
         metrics.update(my_metrics)
         return metrics
 
@@ -314,11 +314,12 @@ class EBGAN(GAN):
         grads = gp_tape.gradient(pred, [data])[0]
         # batch_size = tf.cast(tf.shape(data)[0], data.dtype)
         length, sum_loss = grads.shape[0], 0.0
-        for a in range(length):
-            for b in range(length):
-                if a != b:
-                    sim = tf.square(cosine_similarity(grads[a], grads[b]))
-                    sum_loss += sim
+        sum_loss = tf.reduce_sum(tf.square(cosine_similarity(grads, grads)))
+        # for a in range(length):
+        #     for b in range(length):
+        #         if a != b:
+        #             sim = tf.square(cosine_similarity(grads[a], grads[b]))
+        #             sum_loss += sim
         reg_loss = sum_loss / (length * (length - 1))
         return reg_loss
 

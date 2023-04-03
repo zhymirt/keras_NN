@@ -1,7 +1,7 @@
 import unittest
 from unittest import TestCase
 
-from model_architectures.sine_tsgan_rp_architecture import (
+from src.model_architectures.sine_tsgan_rp_architecture import (
     make_sine_wgan_discriminator, make_sine_wgan_generator,
     make_spectrogram_discriminator, make_spectrogram_generator)
 

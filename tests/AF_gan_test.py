@@ -1,10 +1,9 @@
 import unittest
 from unittest import TestCase
 
-from model_architectures.AF_gan_architecture import (
+from src.model_architectures.AF_gan_architecture import (
     make_AF_discriminator, make_AF_generator, make_AF_rp_generator,
     make_AF_single_discriminator, make_AF_single_generator,
-    make_conditional_discriminator, make_conditional_generator,
     make_AF_rp_discriminator, make_AF_spectrogram_discriminator_1,
     make_AF_spectrogram_generator_1)
 

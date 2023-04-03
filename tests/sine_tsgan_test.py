@@ -1,7 +1,6 @@
-import unittest
 from unittest import TestCase
 
-from model_architectures.sine_tsgan_architecture import make_sine_tsgan_discriminator_1, make_sine_tsgan_generator_1, \
+from src.model_architectures.sine_tsgan_architecture import make_sine_tsgan_discriminator_1, make_sine_tsgan_generator_1, \
     make_sine_tsgan_discriminator_2, make_sine_tsgan_generator_2
 
 
