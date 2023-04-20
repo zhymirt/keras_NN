@@ -42,8 +42,8 @@ def make_noise(input_shape: tuple):
 
 def easy_function():
     """ Function to easily generate data."""
-    model_path = './conditional_af_accel_generator_v3'
-    prediction_output_path = './prediction_output.npy'
+    model_path = 'conditional_af_accel_generator_v3'
+    prediction_output_path = 'prediction_output.npy'
     model = load_saved_model(model_path)
     input_noise = make_noise((4, 128))
     input_labels = np.array((
