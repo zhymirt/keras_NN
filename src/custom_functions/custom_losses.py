@@ -3,6 +3,13 @@ from tensorflow import keras, reduce_mean
 from tensorflow.keras.losses import Loss
 
 
+def critic_diversity_metric(real, fake):
+    """ Compute linear algebra"""
+    real_variance = tf.math.reduce_variance(real)
+    fake_variance = tf.math.reduce_variance(fake)
+    return tf.abs(tf.reduce_mean(real) - tf.reduce_mean(fake)) + tf.abs(real_variance - fake_variance)
+
+
 def discrim_wasserstein_loss_fn(y_true, y_pred):
     """ Return loss for wasserstein discriminator(deprecated)."""
     difference = reduce_mean(y_true - y_pred)

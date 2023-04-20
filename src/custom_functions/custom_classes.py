@@ -5,7 +5,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.python.keras.losses import cosine_similarity
 
-from custom_functions.custom_losses import wasserstein_loss_fn, wasserstein_metric_fn
+from custom_functions.custom_losses import wasserstein_loss_fn, wasserstein_metric_fn, critic_diversity_metric
 
 
 class GAN(keras.Model):
@@ -198,7 +198,13 @@ class CWGAN(WGAN):
         metrics = {m.name: m.result() for m in self.metrics}
         wasserstein_score = wasserstein_metric_fn(None, self.discriminator(
             (self.generator((random_latent_vectors, class_labels)), class_labels)))
-        my_metrics = {'d_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_score}
+        critic_gen_loss = (-d_loss * g_loss) + g_loss
+        critic_gen_diversity_loss = critic_diversity_metric(
+            self.discriminator((real_images, class_labels)),
+            self.discriminator((self.generator((random_latent_vectors, class_labels)), class_labels)))
+        my_metrics = {
+            'd_loss': d_loss, 'g_loss': g_loss, 'wasserstein_score': wasserstein_score,
+            'comb_loss': critic_gen_loss, 'divergence_approx': critic_gen_diversity_loss}
         metrics.update(my_metrics)
         return metrics
 
