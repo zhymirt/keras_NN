@@ -429,3 +429,23 @@ class Sampling(layers.Layer):
         dim = tf.shape(z_mean)[1]
         epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+
+
+class Data:
+
+    def __init__(self, time, data, size, dtype, labels=None):
+        self.time = time
+        self.data = data
+        self.data_size = size
+        self.data_type = dtype
+        if labels is not None:
+            self.labels = labels
+
+
+class Hyperparameters:
+
+    def __init__(self, latent_dimension, epochs, batch_size, num_repeats=1, **kwargs):
+        self.lat_dim = latent_dimension
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.num_repeats = num_repeats
