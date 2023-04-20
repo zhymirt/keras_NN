@@ -1,15 +1,41 @@
+import argparse
 import os
 
 import keras_tuner as kt
+import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.utils import shuffle
 from tensorflow.keras import layers
 from tensorflow import keras, cos
 
 from AF_gan import metric_fft_score, normalize_data
 from af_accel_GAN import load_data_files, prepare_data
 from custom_functions.custom_classes import WGAN, CWGAN
-from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator
+from model_architectures.af_accel_GAN_architecture import make_af_accel_discriminator, \
+    make_conditional_af_accel_discriminator, make_conditional_af_accel_generator
+
+
+def hyper_param_trainer(hp: kt.HyperParameters):
+    latent_dimension, data_size = 24, 5000
+    num_tests = 4
+    discriminator = make_conditional_af_accel_discriminator(
+        data_size, num_tests)
+    generator = make_conditional_af_accel_generator(
+        latent_dimension, data_size, num_tests)
+    cwgan = CWGAN(
+        discriminator=discriminator, generator=generator,
+        latent_dim=latent_dimension)
+    c_lr = hp.Float('critic_lr', 1e-12, 0.01, sampling='log')
+    g_lr = hp.Float('generator_lr', 1e-12, 0.01, sampling='log')
+    cwgan.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=c_lr),
+        g_optimizer=keras.optimizers.Adam(learning_rate=g_lr),
+        metrics=[metric_fft_score])
+    c_train_epochs = hp.Int('critic_training_epochs', 1, 10, default=6)
+    g_train_epochs = hp.Int('generator_training_epochs', 1, 10, default=1)
+    cwgan.set_train_epochs(c_train_epochs, g_train_epochs)  # 5
+    return cwgan
 
 
 def model_builder(hp):
@@ -216,41 +242,65 @@ def tune_model(model_fn, obj_metric, training_data):
                          objective=kt.Objective(obj_metric, direction="min"),
                          max_epochs=32,
                          factor=3,
-                         directory='keras_tuning',
+                         hyperband_iterations=16,
+                         directory='keras_tuning/04_10_23',
                          project_name='conditional_af_accel_tuning'
                          )
     stop_early = tf.keras.callbacks.EarlyStopping(
         monitor=obj_metric, patience=5)
-    tuner.search(training_data, epochs=2, callbacks=[stop_early])
+    tuner.search(training_data, callbacks=[stop_early], batch_size=32)
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
     return best_hps, tuner
 
 
+# def get_args():
+#     """ Parse command line."""
+#     # todo add ability to save models and results
+#     parse = argparse.ArgumentParser()
+#     parse.add_argument('data_file')
+#     parse.add_argument('--conditional', '-c', action='store_true')
+#     parse.add_argument('--label_file', required=)
+#     parse.add_argument('--data_folder')
+
+
 def main():
     # Initial values
-    folder = '../../acceleration_data'
-    filenames = ('accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv')
-    # Collect data
-    complete_data = load_data_files(
-        [os.path.join(folder, name) for name in filenames],
-        separate_time=False)
-    prepared_data = prepare_data(
-        complete_data, scaling='normalize', return_labels=True)
-    normalized = prepared_data['normalized'].repeat(4e3, axis=0)  # 1e4
-    labels = prepared_data['labels'].repeat(4e3, axis=0)
+    # folder = '../../acceleration_data'
+    # filenames = ('accel_1.csv', 'accel_2.csv', 'accel_3.csv', 'accel_4.csv')
+    # # Collect data
+    # complete_data = load_data_files(
+    #     [os.path.join(folder, name) for name in filenames],
+    #     separate_time=False)
+    # prepared_data = prepare_data(
+    #     complete_data, scaling='normalize', return_labels=True)
+    # normalized = prepared_data['normalized'].repeat(4e3, axis=0)  # 1e4
+    # labels = prepared_data['labels'].repeat(4e3, axis=0)
+    # mlb = MultiLabelBinarizer()
+    # new_labels = mlb.fit_transform(labels)
+    folder = '../../data/processed_data'
+    file = 'sine_data_100_400kHz.npy'
+    label_file = 'af_accel_labels.npy'
+    data = np.load(os.path.join(folder, file))
+    labels = np.load(os.path.join(folder, label_file))
     mlb = MultiLabelBinarizer()
     new_labels = mlb.fit_transform(labels)
-    dataset = (normalized, new_labels)
+    repeats = 10e3
+    repeated_data = data.repeat(repeats, axis=0)  # 1e4
+    repeated_labels = new_labels.repeat(repeats, axis=0)
+    repeated_data = repeated_data + np.random.normal(
+        size=repeated_data.shape, scale=1e-10)
+    shuffled_data, shuffled_labels = shuffle(repeated_data, repeated_labels)
+    dataset = (shuffled_data, shuffled_labels)
     # dataset = data_to_dataset(
     #     normalized, dtype='float32', batch_size=16, shuffle=True)
     # Train
     best_hps, tuner = tune_model(
-        conditional_model_builder, 'metric_fft_score', dataset)
+        hyper_param_trainer, 'metric_fft_score', dataset)
     model = tuner.hypermodel.build(best_hps)
     print(dir(best_hps))
     print(best_hps.values)
-    print("Discriminator and Generator learning rates: {}, {}".format(
-        best_hps.get('d_learning_rate'), best_hps.get('g_learning_rate')))
+    print(
+        f"Discriminator and Generator learning rates: {best_hps.get('d_learning_rate')}, {best_hps.get('g_learning_rate')}")
     model.generator.summary()
     exit()
     history = model.fit(dataset)
