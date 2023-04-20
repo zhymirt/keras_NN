@@ -88,6 +88,10 @@ class GAN(keras.Model):
                 grads, self.generator.trainable_weights))
         return g_loss
 
+    def save(self, discriminator_path, generator_path):
+        self.discriminator.save(discriminator_path)
+        self.generator.save(generator_path)
+
 
 class WGAN(GAN):
     """ Class for Wasserstein generative adversarial network."""
