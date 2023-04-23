@@ -319,8 +319,11 @@ def standard_conditional_train():
 
 
 def standard_conditional_eval(
-        generator, full_time, data, latent_dimension, labels, mlb, size, num_classes, data_type=None):
+        generator, full_time, data, latent_dimension, labels, mlb, size,
+        num_classes, data_type=None):
     """ Evaluation for standard conditional."""
+    # todo add in results_dir
+    results_dir = os.curdir
     prediction = generator.predict((tf.random.normal(shape=(size, latent_dimension)), labels))
     # recurrence difference plot
     plot_recurrence_diff(data[labels[0]], prediction[0])
@@ -330,10 +333,10 @@ def standard_conditional_eval(
     print(get_cross_correlate_score(data[0:size], prediction))
     print(get_fft_score(data[0:128], prediction[0:64]))  # time,
     for idx in range(num_classes):
-        print('Current test: {}'.format(idx + 1))
+        print(f'Current test: {idx + 1}')
         prediction = generator.predict(
             (tf.random.normal(shape=(4, latent_dimension)),
-             tf.constant(mlb.transform([[idx + 1]]*4), dtype=data_type)))
+             tf.constant(mlb.transform([[idx + 1]] * 4), dtype=data_type)))
         plot_data(
             full_time[idx], prediction,
             data[idx * num_classes: (idx * num_classes + 4)], show=False,
