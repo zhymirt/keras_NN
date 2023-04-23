@@ -605,9 +605,9 @@ def main():
     normalized, scalars = data_dict['normalized'], data_dict['scalars']
     # Running chosen model
     run_model(
-            mode, full_time, normalized, data_size, data_type,
-            latent_dimension, epochs, batch_size,
-            labels=(labels if conditional else None))
+        mode, full_time, normalized, data_size, data_type,
+        latent_dimension, epochs, batch_size,
+        labels=(labels if conditional else None))
 
 
 if __name__ == '__main__':
