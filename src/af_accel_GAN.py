@@ -471,13 +471,18 @@ def ebgan(
         g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
         d_loss_fn=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM),
         g_loss_fn=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM),
-        metrics=[metric_fft_score, tf_avg_wasserstein, 'g_loss'])
+        metrics=[metric_fft_score, tf_avg_wasserstein, ebgan_model.d_loss_fn])
+    print('Fitting model')
     ebgan_model.fit(
         norm_repeat, epochs=64, batch_size=batch_size, shuffle=True,
-        callbacks=[eb_early_stop])  #
+        callbacks=[eb_early_stop])
     # Saving models
-    # generator.save('models/af_accel_generator_full')
-    # discriminator.save('models/af_accel_discriminator_full')
+    model_dir = os.path.join(os.pardir, 'models', '04_06_2023', 'ebgan')
+    generator.save(os.path.join(model_dir, 'af_accel_generator_ebgan'))
+    autoencoder.save(os.path.join(model_dir, 'af_accel_autoe_ebgan'))
+
+
+def ebgan_eval(generator, full_time, data, latent_dimension, size, data_type=None):
     rp = RecurrencePlot()
     prediction = generator.predict(tf.random.normal(shape=(64, latent_dimension)))
     # recurrence difference plot
@@ -490,7 +495,7 @@ def ebgan(
     print('FFT Score after training: {}'.format(
         get_fft_score(data[0:128], prediction[0:batch_size])))  # time,
     plot_data(
-        full_time[0], prediction[0:8], autoencoder.predict(prediction[0:8]),
+        full_time[0], prediction[0:8], generator.predict(prediction[0:8]),
         show=True, save=False, save_path='./results/AF_5_23_21_')
 
 
