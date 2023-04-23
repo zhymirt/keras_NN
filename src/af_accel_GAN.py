@@ -31,7 +31,7 @@ from model_architectures.af_accel_GAN_architecture import (
     make_conditional_af_accel_discriminator,
     make_conditional_af_accel_generator, make_af_accel_fcc_generator,
     make_fcc_autoencoder, make_cnn_autoencoder,
-    make_fcc_variationalautoencoder)
+    make_fcc_variationalautoencoder, make_conditional_fcc_autoencoder)
 from utils.toml_utils import load_toml
 
 
@@ -437,6 +437,41 @@ def standard(
         get_fft_score(data[0:128], prediction[0:batch_size])))  # time,
     plot_data(full_time[0], prediction[0:4], data[0:4], show=True, save=False,
               save_path='./results/AF_5_23_21_')
+
+
+def ebgan_conditional(
+        full_time, data, labels, data_size, data_type,
+        latent_dimension, epochs, batch_size):
+    norm_repeat = data.repeat(4e3, axis=0)  # 1e4
+    ae_early_stop = EarlyStopping(
+        monitor='val_loss', mode='min', min_delta=1e-8, verbose=1,
+        patience=5, restore_best_weights=True)
+    eb_early_stop = EarlyStopping(
+        monitor='Reconstruction error', mode='min', min_delta=1e-8,
+        verbose=1, patience=7, restore_best_weights=True)
+    autoencoder = make_conditional_fcc_autoencoder(data_size, latent_dimension)  # 16
+    # dataset = data_to_dataset(data)
+    autoencoder.compile(loss=tf.keras.losses.mean_squared_error, optimizer='adam')
+    autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
+                    callbacks=[ae_early_stop], shuffle=True)
+    print("Training generator...")
+
+    # Use autoencoder loss as gan loss function
+    generator = make_af_accel_generator(
+        latent_dimension, data_size, data_type=data_type)
+    # generator = make_af_accel_fcc_generator(latent_dimension, data_size, data_type=data_type)
+    ebgan_model = EBGAN(
+        discriminator=autoencoder, generator=generator, latent_dim=latent_dimension)
+    ebgan_model.compile(
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
+        d_loss_fn=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM),
+        g_loss_fn=tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.SUM),
+        metrics=[metric_fft_score, tf_avg_wasserstein, ebgan_model.d_loss_fn])
+    print('Fitting model')
+    ebgan_model.fit(
+        norm_repeat, epochs=64, batch_size=batch_size, shuffle=True,
+        callbacks=[eb_early_stop])
 
 
 def ebgan(
