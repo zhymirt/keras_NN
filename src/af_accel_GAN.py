@@ -575,11 +575,11 @@ def run_model(
             standard(
                 time, data, data_size, data_type,
                 latent_dim, epochs, batch_size)
-    if mode == 'ebgan':
+    elif mode == 'ebgan':
         ebgan(
             time, data, data_size, data_type, latent_dim,
             epochs, batch_size)
-    if mode == 'vae':
+    elif mode == 'vae':
         vae(
             time, data, data_size, data_type, latent_dim,
             epochs, batch_size)
