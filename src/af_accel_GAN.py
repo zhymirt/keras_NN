@@ -236,12 +236,12 @@ def power_spectrum_score(dataset, synth, fs):
 
 def standard_conditional(
         full_time, data, labels, data_size, data_type,
-        latent_dimension, epochs, batch_size):
+        latent_dimension, epochs, batch_size, num_repeats=1):
     """ Model with standard conditional architecture."""
     # Make labels
     data = data.astype(data_type)  # should be done ahead of time
     mlb = MultiLabelBinarizer()
-    training_data = standard_conditional_data_prep(mlb, labels, data, data_type)
+    training_data = standard_conditional_data_prep(mlb, labels, data, data_type, repeats=num_repeats)
     # Make models
     num_tests = len(mlb.classes_)  # 4 This might be wrong, but we'll find out during testing, number of classes
     discriminator = make_conditional_af_accel_discriminator(
