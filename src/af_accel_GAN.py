@@ -265,15 +265,9 @@ def standard_conditional(
     cwgan.fit(training_data, epochs=epochs, batch_size=batch_size,
               callbacks=[FFTCallback(), early_stop], shuffle=True)
     # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
-    # save_gan(generator, discriminator, )
-    # generator.save('./models/conditional_af_accel_generator_v3')
-    # discriminator.save('./models/conditional_af_accel_discriminator_v3')
-    # save_gan(
-    #     generator, discriminator, '../model/af_sine',
-    #     'conditional_af_accel_generator_v1',
-    #     'conditional_af_accel_discriminator_v1')
-    generator.save('../models/af_sine/conditional_af_accel_generator_v1')
-    discriminator.save('../models/af_sine/conditional_af_accel_discriminator_v1')
+    # model_dir = os.path.join(os.pardir, 'models', 'af_accel_sine_wave_models', '04_20_2023')
+    # generator.save(os.path.join(model_dir, 'conditional_af_accel_generator_v11_alt_es'))
+    # discriminator.save(os.path.join(model_dir, 'conditional_af_accel_discriminator_v11_alt_es'))
     # Eval
     rp = RecurrencePlot()
     eval_size = 64
