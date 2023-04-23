@@ -258,13 +258,13 @@ def standard_conditional(
         metrics=[metric_fft_score])
     cwgan.set_train_epochs(6, 1)  # 5
     # Pre train eval
-    standard_conditional_pre_eval(generator, training_data[0:128], latent_dimension, mlb, data_type)
+    # standard_conditional_pre_eval(generator, training_data[0:128], latent_dimension, mlb, data_type)
     # Train model
     early_stop = EarlyStopping(
         monitor='divergence_approx', mode='min', min_delta=1e-6, verbose=1,
         patience=5, restore_best_weights=True)
-    cwgan.fit(training_data, epochs=epochs, batch_size=batch_size,
-              callbacks=[FFTCallback(), early_stop], shuffle=True)
+    history = cwgan.fit(training_data, epochs=epochs, batch_size=batch_size,
+                        callbacks=[FFTCallback(), early_stop], shuffle=True)
     # cwgan.fit(x=benign_data, y=labels, epochs=epochs, batch_size=batch_size, callbacks=callback_list)
     # model_dir = os.path.join(os.pardir, 'models', 'af_accel_sine_wave_models', '04_20_2023')
     # generator.save(os.path.join(model_dir, 'conditional_af_accel_generator_v11_alt_es'))
@@ -273,9 +273,10 @@ def standard_conditional(
     rp = RecurrencePlot()
     eval_size = 64
     eval_labels = np.random.randint(0, 1, (eval_size, num_tests))
-    standard_conditional_eval(
-        generator, full_time, data, latent_dimension, eval_labels, mlb,
-        eval_size, num_tests, data_type)
+    # standard_conditional_eval(
+    #     generator, full_time, data, latent_dimension, eval_labels, mlb,
+    #     eval_size, num_tests, data_type)
+    return cwgan, history
 
 
 def standard_conditional_data_prep(mlb: MultiLabelBinarizer, labels, data, data_type=None, repeats=1):
