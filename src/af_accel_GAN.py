@@ -131,42 +131,6 @@ def prepare_data(complete: np.ndarray, scaling: str = None, return_labels: bool 
     return returned_values
 
 
-def average_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> float:
-    """ Calculate average wasserstein distance between two arrays."""
-    arr_1, arr_2 = np.asarray(arr_1), np.asarray(arr_2)
-    # print('Array shapes: {}, {}'.format(arr_1.shape, arr_2.shape))
-    if arr_1.ndim == 1:
-        return wasserstein_distance(arr_1, arr_2)
-    elif arr_1.ndim == 2:
-        distances = [wasserstein_distance(item_1, item_2)
-                     for item_1, item_2 in zip(arr_1, arr_2)]
-        # distances = list()
-        # for item_1, item_2 in zip(arr_1, arr_2):
-        #     distances.append(scipy.stats.wasserstein_distance(item_1, item_2))
-        # print(distances)
-        return np.asarray(distances).mean()
-
-# def average_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> float:
-#     """ Calculate average wasserstein distance between two arrays."""
-#     arr_1, arr_2 = np.asarray(arr_1), np.asarray(arr_2)
-#     # print('Array shapes: {}, {}'.format(arr_1.shape, arr_2.shape))
-#     if arr_1.ndim == 1:
-#         return wasserstein_distance(arr_1, arr_2)
-#     elif arr_1.ndim == 2:
-#         distances = [wasserstein_distance(item_1, item_2)
-#                      for item_1, item_2 in zip(arr_1, arr_2)]
-#         # distances = list()
-#         # for item_1, item_2 in zip(arr_1, arr_2):
-#         #     distances.append(scipy.stats.wasserstein_distance(item_1, item_2))
-#         # print(distances)
-#         return np.asarray(distances).mean()
-#
-#
-# def tf_avg_wasserstein(arr_1: np.ndarray, arr_2: np.ndarray) -> tf.float32:
-#     """ Wrap average_wasserstein function and return result."""
-#     return tf.py_function(average_wasserstein, (arr_1, arr_2), tf.float32)
-
-
 def plot_wasserstein_histogram(data: np.ndarray) -> plt.Figure:
     """ Plot histogram for wasserstein scores of data.
 
