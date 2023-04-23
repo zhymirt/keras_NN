@@ -340,12 +340,13 @@ def standard_conditional_eval(
         plot_data(
             full_time[idx], prediction,
             data[idx * num_classes: (idx * num_classes + 4)], show=False,
-            save=False, save_path='./results/AF_5_23_21_')
+            save=False, save_path=os.path.join(results_dir, 'predictions.pdf'))
     prediction = generator.predict(
         (tf.random.normal(shape=(1, latent_dimension)),
          tf.constant(mlb.transform([[1, 3]]), dtype=data_type)))
     plot_data(full_time[0], prediction, data[0], show=False,
-              save=False, save_path='./results/AF_5_23_21_')
+              save=False, save_path=os.path.join(results_dir, 'prediction.pdf'))
+
     plt.show()
 
 
