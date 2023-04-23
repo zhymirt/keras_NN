@@ -251,15 +251,16 @@ def standard_conditional(
     cwgan = CWGAN(
         discriminator=discriminator, generator=generator,
         latent_dim=latent_dimension)
-    cwgan.compile(d_optimizer=keras.optimizers.Adam(learning_rate=0.001),
-                  g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
-                  metrics=[metric_fft_score, 'accuracy'])
-    cwgan.set_train_epochs(5, 1)
+    cwgan.compile(  # todo learning rates should go in hyperparameters
+        d_optimizer=keras.optimizers.Adam(learning_rate=0.001),
+        g_optimizer=keras.optimizers.Adam(learning_rate=0.0002),
+        metrics=[metric_fft_score])
+    cwgan.set_train_epochs(6, 1)  # 5
     # Pre train eval
     standard_conditional_pre_eval(generator, training_data[0:128], latent_dimension, mlb, data_type)
     # Train model
     early_stop = EarlyStopping(
-        monitor='wasserstein_score', mode='min', min_delta=1e-6, verbose=1,
+        monitor='divergence_approx', mode='min', min_delta=1e-6, verbose=1,
         patience=5, restore_best_weights=True)
     cwgan.fit(training_data, epochs=epochs, batch_size=batch_size,
               callbacks=[FFTCallback(), early_stop], shuffle=True)
