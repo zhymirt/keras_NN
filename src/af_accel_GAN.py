@@ -318,13 +318,14 @@ def standard_conditional(
         eval_size, num_tests, data_type)
 
 
-def standard_conditional_data_prep(mlb: MultiLabelBinarizer, labels, data, data_type=None):
+def standard_conditional_data_prep(mlb: MultiLabelBinarizer, labels, data, data_type=None, repeats=1):
     """ Data preparation for standard_conditional()"""
     new_labels = mlb.fit_transform(labels)
     print(f'Classes: {mlb.classes_}')
     print(f'labels shape: {labels.shape}, new labels shape: {new_labels.shape}')
     # Reused variables
-    repeat = int(4e3)
+    # repeat = repeats
+    repeat = int(4e3)  # int(10e3)
     # Make more copies of reference data
     data_repeat = data.repeat(repeat, axis=0)  # 1e4
     new_labels = new_labels.repeat(repeat, axis=0)
