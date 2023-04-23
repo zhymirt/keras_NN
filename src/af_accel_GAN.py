@@ -238,8 +238,9 @@ def standard_conditional(
         full_time, data, labels, data_size, data_type,
         latent_dimension, epochs, batch_size, num_repeats=1):
     """ Model with standard conditional architecture."""
+    results_dir = os.path.join('results', 'standard_conditional', 'af_accel_sine_wave', '03_30_2023', '')
     # Make labels
-    data = data.astype(data_type)  # should be done ahead of time
+    #     data = data.astype(data_type)  # should be done ahead of time
     mlb = MultiLabelBinarizer()
     training_data = standard_conditional_data_prep(mlb, labels, data, data_type, repeats=num_repeats)
     # Make models
