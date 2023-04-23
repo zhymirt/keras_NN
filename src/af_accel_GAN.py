@@ -13,7 +13,7 @@ from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 from typing import List
 from scipy.stats import wasserstein_distance
 
-from utils.matplotlib_utils import plot_data
+from AF_gan import plot_data
 from utils.tensorflow_utils import data_to_dataset
 from AF_gan import (normalize_data, denormalize_data, metric_fft_score,
                     get_fft_score, get_cross_correlate_score, plot_correlations, plot_recurrence_diff)
