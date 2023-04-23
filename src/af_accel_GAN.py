@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from pyts.image import RecurrencePlot
 from sklearn import preprocessing
 from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.utils import shuffle
 from tensorflow import keras
 from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 from typing import List
@@ -328,12 +329,14 @@ def standard_conditional_data_prep(mlb: MultiLabelBinarizer, labels, data, data_
     data_repeat = data.repeat(repeat, axis=0)  # 1e4
     new_labels = new_labels.repeat(repeat, axis=0)
     # Sprinkle in random noise
-    data_repeat = data_repeat + tf.random.normal(
-        shape=data_repeat.shape, stddev=1e-10, dtype=data_type)
+    data_repeat = data_repeat + np.random.normal(
+        size=data_repeat.shape, scale=1e-10)
     # normalized = tf.convert_to_tensor(normalized)
     # new_labels = tf.convert_to_tensor(new_labels)
-    training_data = (data_repeat, new_labels)
-    return training_data
+    # training_data = (data_repeat, new_labels)
+    shuffled_data, shuffled_labels = shuffle(data_repeat, new_labels)
+    dataset = (shuffled_data, shuffled_labels)
+    return dataset
 
 
 def standard_conditional_pre_eval(generator, data, latent_dimension, mlb, data_type=None):
