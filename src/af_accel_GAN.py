@@ -25,7 +25,7 @@ from keras_data import get_date_string
 from sine_gan import generate_sine
 from custom_functions.custom_losses import ebgan_loss_fn
 from custom_functions.custom_callbacks import PrintLogsCallback, FFTCallback
-from custom_functions.custom_classes import WGAN, CWGAN, EBGAN
+from custom_functions.custom_classes import WGAN, CWGAN, EBGAN, Hyperparameters, Data
 from model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
