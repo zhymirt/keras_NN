@@ -555,32 +555,37 @@ def run_model(
 def get_args():
     """ Parse command line."""
     # todo add ability to save models and results
+    # todo config file will be default with command line overrides
+    # todo separate getting args from main function
     parse = argparse.ArgumentParser()
+    parse.add_argument('config_file')  # Path to config file
     parse.add_argument(
-        'mode', choices=[STANDARD_MODE, EBGAN_MODE, VAE_MODE], default=STANDARD_MODE)
+        '--mode', choices=[STANDARD_MODE, EBGAN_MODE, VAE_MODE], default=STANDARD_MODE)
     parse.add_argument('--conditional', action='store_true')  # Is model conditional
     parse.add_argument('--prepare_data', action='store_true')  # This calls prepare_data() which expects a specific file
-    parse.add_argument('config_file')  # Path to config file
     parse.add_argument('--make_paths', action='store_true')  # Make directories if they don't exist
     args = parse.parse_args()
     config_table = load_toml(args.config_file)
     config_data = config_table[CONFIG_DATA]
     config_hp = config_table[H_PARAMS]
+    # todo these need to be made into constants
+    conditional = config_table['training_mode']['conditional']
+    mode = config_table['training_mode']['mode']
     # Data and time and labels will depend on version
     # Assume data, time, and labels are separate files
     # TODO check if files are numpy files, else do some work
     data_dir = config_data[DATA_DIR]
     data = np.load(os.path.join(data_dir, config_data[DATA_PATH]))
     time = np.load(os.path.join(data_dir, config_data[TIME_PATH]))
-    if args.conditional:
+    if conditional:
         labels = np.load(os.path.join(data_dir, config_data[LABEL_PATH]))
         run_model(
-            args.mode, time, data, DATA_LENGTH, config_data[DTYPE],
+            mode, time, data, DATA_LENGTH, config_data[DTYPE],
             config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE],
             labels)
     else:
         run_model(
-            args.mode, time, data, DATA_LENGTH, config_data[DTYPE],
+            mode, time, data, DATA_LENGTH, config_data[DTYPE],
             config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE])
 
 
