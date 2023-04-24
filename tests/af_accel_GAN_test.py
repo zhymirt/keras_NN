@@ -10,7 +10,8 @@ from src.af_accel_GAN import prepare_data, plot_power_spectrum, plot_spectrogram
 from src.model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
-    make_conditional_af_accel_generator, make_af_accel_fcc_generator)
+    make_conditional_af_accel_generator, make_af_accel_fcc_generator, make_conditional_fcc_autoencoder,
+    make_conditional_fcc_variationalautoencoder)
 from src.AF_gan import get_fft_score
 from src.sine_gan import generate_sine
 
@@ -19,6 +20,7 @@ class AfAccelGANArchitectureTest(unittest.TestCase):
     def setUp(self) -> None:
         self.latent_dim = 24
         self.vector_size = 5_000
+        self.num_freq = 4
 
     def test_fcc_generator_succeeds(self):
         model = make_af_accel_fcc_generator(
@@ -46,7 +48,30 @@ class AfAccelGANArchitectureTest(unittest.TestCase):
         self.assertTrue(bool(model))
         self.assertEqual(model.output_shape, (None, self.vector_size))
 
-    @patch('af_accel_GAN.np', spec=True)
+    def test_conditional_fcc_autoencoder(self):
+        model = make_conditional_fcc_autoencoder(
+            self.vector_size, self.latent_dim, self.num_freq, summary=True
+        )
+        self.assertTrue(bool(model.encoder))
+        self.assertTrue(bool(model.decoder))
+        self.assertTrue(bool(model))
+
+    def test_conditional_fcc_variationalautoencoder(self):
+        model = make_conditional_fcc_variationalautoencoder(
+            self.vector_size, self.latent_dim, self.num_freq, summary=True
+        )
+        self.assertTrue(bool(model.encoder))
+        self.assertTrue(bool(model.decoder))
+        self.assertTrue(bool(model))
+
+
+class AfAccelGANTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.latent_dim = 24
+        self.vector_size = 5_000
+        self.num_freq = 5
+
+    @patch('src.af_accel_GAN.np', spec=True)
     def test_load_data_time_separate(self, mock_load):
         mock_load.loadtxt.return_value = np.asarray([[0, 0, 1, 0], [1, 0, 1, 0],
                                                      [0, 0, 0, 1], [1, 1, 1, 1]])
@@ -72,12 +97,6 @@ class AfAccelGANArchitectureTest(unittest.TestCase):
         print(get_fft_score(np.array([wave]), np.array([wave])))
         self.assertAlmostEqual(
             get_fft_score(np.array([wave]), np.array([wave])), 0, 8)
-
-class AfAccelGANTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.latent_dim = 24
-        self.vector_size = 5_000
-        self.num_freq = 5
 
     def load_data(self):
         self.skipTest()
@@ -110,13 +129,12 @@ class AfAccelGANTest(unittest.TestCase):
         complete_data[:, :, 0] = 0
         prepared_data = prepare_data(
             complete_data, scaling='normalize', return_labels=True)
-        np.testing.assert_array_equal(prepared_data['data'], np.ones(shape=(17, 20))*3)
+        np.testing.assert_array_equal(prepared_data['data'], np.ones(shape=(17, 20)) * 3)
         self.assertTrue(np.array_equal(prepared_data['times'], np.zeros(shape=(4, 20))))
         self.assertTrue('labels' in prepared_data)
-        self.assertTrue(np.array_equal(prepared_data['labels'], [[1], [2], [3], [4]]*4))
+        self.assertTrue(np.array_equal(prepared_data['labels'], [[1], [2], [3], [4]] * 4))
         # self.assertTrue(np.array_equal(normalized, prepared_data['normalized']))
         # self.assertTrue(np.array_equal(scalars, prepared_data['scalars']))
-
 
     def test_average_wasserstein(self):
         self.skipTest()
@@ -139,12 +157,57 @@ class AfAccelGANTest(unittest.TestCase):
 class AfAccelGANModelTest(unittest.TestCase):
     def test_standard_conditional(self):
         self.skipTest()
+        # standard_conditional
 
     def test_plot_wasserstein_histogram(self):
         data = np.random.normal(0, 1, (2, 1024))
         fig_num = plot_wasserstein_histogram(data)
         self.assertTrue(fig_num)
         plt.show()
+
+
+class AfAccelGANDataPrep(unittest.TestCase):
+    def setUp(self):
+        self.mlb = MultiLabelBinarizer()
+        self.labels = [[1], [2], [3], [4]]
+        self.vector_size = 5_000
+        self.num_signals = 4
+        self.data = [[0, 1, 2], [3, 4, 5],
+                     [6, 7, 8], [9, 10, 11]]
+        self.repeats = 2
+        self.batch_size = 4  # Might be superfluous
+        self.expected = None
+
+    def test_standard_conditional_data_prep(self):
+        self.skipTest('Not written out yet')
+        # standard_conditional_data_prep(
+        #     self.mlb, self.labels, self.data,
+        #     data_type='float32', repeats=2)
+        # expected = np.
+
+
+class TestAFAccelGANTraining(unittest.TestCase):
+    # Need data, labels, time
+    def setUp(self):
+        self.mlb = MultiLabelBinarizer()
+        self.lat_dim = 24
+        self.labels = np.asarray([[1], [2], [3], [4]])
+        self.vector_size = 5_000
+        self.num_signals = 4
+        self.time = np.linspace(0, 5, self.vector_size)
+        self.data = np.random.rand(self.num_signals, self.vector_size)
+        self.repeats = 2
+        self.batch_size = 4  # Might be superfluous
+        self.expected = None
+
+    # @pytest.fixture
+    # def train_data(self):
+    #     return np.array()
+    def test_standard_conditional(self):  # Assert this passes
+        standard_conditional(
+            self.time, self.data, self.labels, self.vector_size,
+            'float32', self.lat_dim, 2, self.batch_size, self.repeats)
+        self.assertTrue(True)
 
 
 if __name__ == '__main__':
