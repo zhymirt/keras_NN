@@ -2,11 +2,13 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 from matplotlib import pyplot as plt
+from sklearn.preprocessing import MultiLabelBinarizer
 
-from src import af_accel_GAN
+# from src import af_accel_GAN
 from src.af_accel_GAN import prepare_data, plot_power_spectrum, plot_spectrogram, \
-    plot_wasserstein_histogram
+    plot_wasserstein_histogram, load_data, standard_conditional_data_prep, standard_conditional
 from src.model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
@@ -75,18 +77,18 @@ class AfAccelGANTest(unittest.TestCase):
     def test_load_data_time_separate(self, mock_load):
         mock_load.loadtxt.return_value = np.asarray([[0, 0, 1, 0], [1, 0, 1, 0],
                                                      [0, 0, 0, 1], [1, 1, 1, 1]])
-        time, data = af_accel_GAN.load_data('fake_path.txt', True)
+        time, data = load_data('fake_path.txt', True)
         print(dir(mock_load))
         mock_load.loadtxt.assert_called_with('fake_path.txt', delimiter=',', skiprows=2)
         self.assertTrue(np.array_equal(time, [0, 1, 0, 1]))
         self.assertTrue(np.array_equal(data, [[0, 1, 0], [0, 1, 0],
                                               [0, 0, 1], [1, 1, 1]]))
 
-    @patch('af_accel_GAN.np', spec=True)
+    @patch('src.af_accel_GAN.np', spec=True)
     def test_load_data_time_not_separate(self, mock_load):
         mock_load.loadtxt.return_value = np.asarray([[0, 0, 1], [1, 0, 1],
                                                      [0, 0, 0], [1, 1, 1]])
-        full = af_accel_GAN.load_data('fake_path.txt', False)
+        full = load_data('fake_path.txt', False)
         mock_load.loadtxt.assert_called_with('fake_path.txt', delimiter=',', skiprows=2)
         self.assertTrue(np.array_equal(full, [[0, 0, 1], [1, 0, 1],
                                               [0, 0, 0], [1, 1, 1]]))
