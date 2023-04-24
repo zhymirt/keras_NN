@@ -180,7 +180,7 @@ def save_gan(
         :param discriminator_path: Path to save discriminator
         :type discriminator_path: None or str
     """
-    folder = save_folder if save_folder is None else os.curdir
+    folder = save_folder if save_folder is not None else os.curdir
     generator.save(os.path.join(folder, generator_path))
     discriminator.save(os.path.join(folder, discriminator_path))
 
