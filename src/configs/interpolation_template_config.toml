@@ -1,0 +1,29 @@
+title = "main config"
+
+version = 2
+[experiments]
+#batch_sizes = [1, 16, 32, 64, 128, 256]
+repeats = [1, 10, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1_000, 2_000, 3_000, 5_000, ]
+results_dir = "results/data_interpolation"
+
+[training_mode]
+mode = "standard"
+conditional = true
+# save_models
+# model_dir
+# model_names
+
+[model_hyperparameters] # If These will be used unless experiment replaces with options
+latent_dimension = 24
+epochs = 64
+batch_size = 32
+num_repeats = 1
+# learning_rates
+
+[data]
+data_type = "float32"
+dir = "../path_to_parent_dir/"
+data = "data_file.npy"
+time = "time_file.npy"
+labels = "label_file.npy"
+processed = true
