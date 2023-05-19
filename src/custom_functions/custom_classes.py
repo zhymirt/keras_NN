@@ -275,6 +275,15 @@ class Autoencoder(keras.Model):
         return decoded
 
 
+class ConditionalAutoencoder(Autoencoder):
+    """ Autoencoder class."""
+
+    def call(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder((encoded, x[1]))
+        return decoded
+
+
 class EBGAN(GAN):
     """ Energy Based GAN."""
 
@@ -332,6 +341,67 @@ class EBGAN(GAN):
         #             sum_loss += sim
         reg_loss = sum_loss / (length * (length - 1))
         return reg_loss
+
+
+class CEBGAN(EBGAN):
+    """ Conditional Energy Based GAN."""
+
+    def train_step(self, data):
+        """ Training step iteration for model."""
+        if isinstance(data, tuple):
+            data = data[0]
+        real_data, class_labels = data[0], data[1]
+        data_type, batch_size = real_data.dtype, tf.shape(real_data)[0]
+        random_latent_vectors = tf.random.normal(
+            shape=(batch_size, self.latent_dim))
+        g_loss = self.train_generator(
+            tf.zeros((batch_size, 1)), random_latent_vectors,
+            class_labels, data_type=data_type)
+        self.compiled_metrics.update_state(
+            real_data, self.generator((random_latent_vectors, class_labels)))
+        metrics = {m.name: m.result() for m in self.metrics}
+        my_metrics = {'g_loss': g_loss, 'Reconstruction error': g_loss}
+        metrics.update(my_metrics)
+        return metrics
+
+    def train_generator(self, labels, data, class_labels, data_type='float32'):
+        """ Train generator to reduce reconstruction error of its values
+        passed through the discriminator."""
+        g_loss = None
+        for _ in range(self.generator_epochs):
+            with tf.GradientTape() as tape:
+                synthetic = self.generator((data, class_labels))
+                g_loss = self.g_loss_fn(self.discriminator((synthetic, class_labels)), synthetic)
+                val_loss = self.regularizer(synthetic, class_labels)
+                loss = g_loss + val_loss
+            grads = tape.gradient(loss, self.generator.trainable_weights)
+            self.g_optimizer.apply_gradients(
+                zip(grads, self.generator.trainable_weights))
+        return g_loss
+
+    def get_reconstruction_error(self, x, labels):
+        """ Return loss function value between input and
+         discriminator's reconstruction attempt."""
+        return self.d_loss_fn(self.discriminator((x, labels)), x)
+
+    def regularizer(self, data, class_labels):
+        with tf.GradientTape() as gp_tape:
+            gp_tape.watch(data)
+            pred = self.discriminator.encoder((data, class_labels))
+        grads = gp_tape.gradient(pred, [data])[0]
+        length, sum_loss = grads.shape[0], 0.0
+        sum_loss = self.get_pt(grads)
+        # sum_loss = tf.reduce_sum(tf.square(cosine_similarity(grads, grads)))
+        reg_loss = sum_loss / (length * (length - 1))
+        return reg_loss
+
+    @staticmethod
+    def get_pt(self, grads):
+        cs = []
+        for idx, grad in enumerate(grads):
+            out = np.sum(np.square([cosine_similarity(grad, item) for jdx, item in enumerate(grads) if idx != jdx]))
+            cs.append(out)
+        return np.sum(cs)
 
 
 class VAE(keras.Model):
@@ -416,6 +486,83 @@ class VAE(keras.Model):
             zip(gradients, self.trainable_variables))
         metrics.update({'loss': loss})
         return metrics
+
+
+class CVAE(VAE):
+    """Convolutional variational autoencoder."""
+    # def predict(self, x):
+    #     return self.call(x)
+
+    def predict(self, x):
+        return self.call(x)
+
+    def call(self, inputs, training=False):
+        """ Return output logits of call through encode and decode.
+
+        Expects a tuple of data and labels."""
+        # Inputs should be a tuple, can feed tuple to encoder but not for decoder
+        # print(x)
+        data, labels = inputs
+        mean, logvar = self.encode((data, labels))
+        z = self.reparameterize(mean, logvar)
+        x_logit = self.decode((z, labels)) if training else self.sample(labels, z)
+        return x_logit
+
+    def compile(self, optimizer, metrics=None):
+        super(VAE, self).compile(optimizer, metrics=metrics)
+
+    def sample(self, labels, eps=None):
+        if eps is None:
+            eps = tf.random.normal(shape=(100, self.latent_dimension))
+        return self.decode((eps, labels), apply_sigmoid=True)
+
+    # def encode(self, x):
+    #     # print(x.shape)
+    #     encoded = self.encoder(x)
+    #     # print(encoded.shape)
+    #     mean, logvar = tf.split(encoded, num_or_size_splits=2, axis=1)
+    #     return mean, logvar
+
+    def decode(self, z, apply_sigmoid=False):
+        logits = self.decoder(z)
+        return tf.sigmoid(logits) if apply_sigmoid else logits
+
+    def compute_loss(self, x, labels):
+        mean, logvar = self.encode((x, labels))
+        z = self.reparameterize(mean, logvar)
+        x_logit = self.decode((z, labels))
+        cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=x_logit, labels=x)
+        # print(f'Cross Entropy Shape: {cross_ent.shape}')
+        logpx_z = -tf.reduce_sum(cross_ent, axis=[1])
+        logpz = self.log_normal_pdf(z, 0., 0.)
+        logqz_x = self.log_normal_pdf(z, mean, logvar)
+        return -tf.reduce_mean(logpx_z + logpz - logqz_x)
+
+    def train_step(self, x):
+        """Executes one training step and returns the loss.
+        This function computes the loss and gradients,
+        and uses the latter to update the model's parameters.
+        """
+        if isinstance(x, tuple):
+            x = x[0]
+        data, class_labels = x[0], x[1]
+        # data_type = x.dtype
+        # batch_size = tf.shape(x)[0]
+        with tf.GradientTape() as tape:
+            loss = self.compute_loss(data, class_labels)
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.compiled_metrics.update_state(data, self.call((data, class_labels)))
+        metrics = {m.name: m.result() for m in self.metrics}
+        self.optimizer.apply_gradients(
+            zip(gradients, self.trainable_variables))
+        metrics.update({'loss': loss})
+        return metrics
+
+
+
+
+
 
 
 # Written by fchollet 2020

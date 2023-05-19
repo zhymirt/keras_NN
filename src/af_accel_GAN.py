@@ -25,13 +25,13 @@ from keras_data import get_date_string
 from sine_gan import generate_sine
 from custom_functions.custom_losses import ebgan_loss_fn
 from custom_functions.custom_callbacks import PrintLogsCallback, FFTCallback
-from custom_functions.custom_classes import WGAN, CWGAN, EBGAN, Hyperparameters, Data
+from custom_functions.custom_classes import WGAN, CWGAN, EBGAN, Hyperparameters, Data, CEBGAN
 from model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
     make_conditional_af_accel_generator, make_af_accel_fcc_generator,
     make_fcc_autoencoder, make_cnn_autoencoder,
-    make_fcc_variationalautoencoder, make_conditional_fcc_autoencoder)
+    make_fcc_variationalautoencoder, make_conditional_fcc_autoencoder, make_conditional_fcc_variationalautoencoder)
 from utils.toml_utils import load_toml
 
 
@@ -406,26 +406,29 @@ def standard(
 
 def ebgan_conditional(
         full_time, data, labels, data_size, data_type,
-        latent_dimension, epochs, batch_size):
-    norm_repeat = data.repeat(4e3, axis=0)  # 1e4
+        latent_dimension, epochs, batch_size, num_repeats=1):
+    # norm_repeat = data.repeat(4e3, axis=0)  # 1e4
+    mlb = MultiLabelBinarizer()
+    dataset = standard_conditional_data_prep(mlb, labels, data, data_type, repeats=4e3)
+    num_tests = len(mlb.classes_)
     ae_early_stop = EarlyStopping(
         monitor='val_loss', mode='min', min_delta=1e-8, verbose=1,
         patience=5, restore_best_weights=True)
     eb_early_stop = EarlyStopping(
         monitor='Reconstruction error', mode='min', min_delta=1e-8,
         verbose=1, patience=7, restore_best_weights=True)
-    autoencoder = make_conditional_fcc_autoencoder(data_size, latent_dimension)  # 16
+    autoencoder = make_conditional_fcc_autoencoder(data_size, latent_dimension, num_tests)  # 16
     # dataset = data_to_dataset(data)
     autoencoder.compile(loss=tf.keras.losses.mean_squared_error, optimizer='adam')
-    autoencoder.fit(norm_repeat, norm_repeat, epochs=256, batch_size=batch_size, validation_split=0.2,
+    autoencoder.fit(dataset, dataset, epochs=epochs, batch_size=batch_size, validation_split=0.2,
                     callbacks=[ae_early_stop], shuffle=True)
     print("Training generator...")
 
     # Use autoencoder loss as gan loss function
-    generator = make_af_accel_generator(
-        latent_dimension, data_size, data_type=data_type)
+    generator = make_conditional_af_accel_generator(
+        latent_dimension, data_size, num_tests, data_type=data_type)
     # generator = make_af_accel_fcc_generator(latent_dimension, data_size, data_type=data_type)
-    ebgan_model = EBGAN(
+    ebgan_model = CEBGAN(
         discriminator=autoencoder, generator=generator, latent_dim=latent_dimension)
     ebgan_model.compile(
         d_optimizer=keras.optimizers.Adam(learning_rate=0.0001),
@@ -435,8 +438,12 @@ def ebgan_conditional(
         metrics=[metric_fft_score, tf_avg_wasserstein, ebgan_model.d_loss_fn])
     print('Fitting model')
     ebgan_model.fit(
-        norm_repeat, epochs=64, batch_size=batch_size, shuffle=True,
+        dataset, epochs=epochs, batch_size=batch_size, shuffle=True,
         callbacks=[eb_early_stop])
+    # Saving models
+    model_dir = os.path.join(os.pardir, 'models', '05_20_2023', 'ebgan')
+    generator.save(os.path.join(model_dir, 'af_accel_generator_conditional_ebgan'))
+    autoencoder.save(os.path.join(model_dir, 'af_accel_autoe_conditional_ebgan'))
 
 
 def ebgan(
@@ -518,23 +525,44 @@ def vae(
         save=False, save_path='./results/AF_5_23_21_')
 
 
-def run_model(
-        mode, time, data, data_size, data_type, latent_dim, epochs, batch_size, labels=None):
+def conditional_vae(
+        full_time, data, labels, data_size, data_type,
+        latent_dimension, epochs, batch_size, num_repeats=1):
+    """ Conditional VAE training."""
+    mlb = MultiLabelBinarizer()
+    dataset = standard_conditional_data_prep(mlb, labels, data, data_type, num_repeats)
+    num_tests = len(mlb.classes_)
+    ae_early_stop = EarlyStopping(
+        monitor='loss', mode='min', min_delta=1e-8, verbose=1, patience=3,
+        restore_best_weights=True)
+    autoencoder = make_conditional_fcc_variationalautoencoder(data_size, latent_dimension, num_tests)
+    autoencoder.compile(optimizer='adam')
+    autoencoder.fit(
+        dataset, dataset, epochs=epochs, batch_size=batch_size,
+        validation_split=0.2, callbacks=[ae_early_stop], shuffle=True)
+    autoencoder.save(os.path.join(os.pardir, 'models', '05_20_2023', 'vae', 'conditional_vae'))
+
+
+def run_model(mode, data_obj: Data, latent_dim, epochs, batch_size):
     """ Train a model chosen by mode with given hyperparameters.
 
-        :param str mode: Which model mode to run. Current options: [standard, ebgan, or vae]
-        :param ndarray time:
-        :param ndarray data:
-        :param int data_size:
-        :param data_type:
-        :type data_type:
-        :param int latent_dim:
+        :param str mode: Which model mode to run.
+         Current options: [standard, ebgan, or vae]
+
         :param int epochs:
         :param int batch_size:
         :param labels:
         :type labels:
         :return: None
         """
+    # TODO these will be removed when functions are rewritten
+    time, data = data_obj.time, data_obj.data
+    # Quick patch, find better solution
+    try:
+        labels = data_obj.labels
+    except AttributeError:
+        labels = None
+    data_size, data_type = data_obj.data_size, data_obj.data_type
     conditional = labels is not None
     if mode == 'standard':
         if conditional:
@@ -546,10 +574,19 @@ def run_model(
                 time, data, data_size, data_type,
                 latent_dim, epochs, batch_size)
     elif mode == 'ebgan':
-        ebgan(
-            time, data, data_size, data_type, latent_dim,
-            epochs, batch_size)
+        if conditional:
+            ebgan_conditional(
+                time, data, labels, data_size, data_type, latent_dim,
+                epochs, batch_size)
+        else:
+            ebgan(
+                time, data, data_size, data_type, latent_dim,
+                epochs, batch_size)
     elif mode == 'vae':
+        if conditional:
+            conditional_vae(
+                time, data, labels, data_size, data_type, latent_dim,
+                epochs, batch_size)
         vae(
             time, data, data_size, data_type, latent_dim,
             epochs, batch_size)

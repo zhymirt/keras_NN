@@ -1,7 +1,7 @@
 from tensorflow import cos as cos
 from tensorflow.keras import layers, Model, Sequential
 
-from custom_functions.custom_classes import Autoencoder, VAE, Sampling
+from custom_functions.custom_classes import Autoencoder, VAE, Sampling, ConditionalAutoencoder, CVAE
 
 
 def make_af_accel_discriminator(vector_size, summary=False, data_type='float32') -> Model:
@@ -280,7 +280,7 @@ def make_conditional_fcc_autoencoder(
 
     decoder_model = Model(inputs=(decoder_vector_input, decoder_label_input), outputs=decoder, name='decoder')
 
-    model = Autoencoder(encoder=encoder_model, decoder=decoder_model, latent_dimension=latent_dimension)
+    model = ConditionalAutoencoder(encoder=encoder_model, decoder=decoder_model, latent_dimension=latent_dimension)
     if summary:
         print(encoder_model.summary())
         print(decoder_model.summary())
@@ -359,7 +359,7 @@ def make_conditional_fcc_variationalautoencoder(
 
     decoder_model = Model(inputs=(decoder_vector_input, decoder_label_input), outputs=decoder, name='decoder')
 
-    model = VAE(encoder=encoder_model, decoder=decoder_model, latent_dimension=latent_dimension)
+    model = CVAE(encoder=encoder_model, decoder=decoder_model, latent_dimension=latent_dimension)
     if summary:
         print(encoder_model.summary())
         print(decoder_model.summary())
