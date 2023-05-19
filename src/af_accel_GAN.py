@@ -555,8 +555,6 @@ def run_model(mode, data_obj: Data, latent_dim, epochs, batch_size):
 
         :param int epochs:
         :param int batch_size:
-        :param labels:
-        :type labels:
         :return: None
         """
     # TODO these will be removed when functions are rewritten
@@ -612,7 +610,6 @@ def get_args():
     parse.add_argument('--make_paths', action='store_true')  # Make directories if they don't exist
     args = parse.parse_args()
     config_table = load_toml(args.config_file)
-    config_data = config_table[CONFIG_DATA]
     config_hp = config_table[H_PARAMS]
     # todo these need to be made into constants
     conditional = config_table['training_mode']['conditional']
@@ -620,19 +617,32 @@ def get_args():
     # Data and time and labels will depend on version
     # Assume data, time, and labels are separate files
     # TODO check if files are numpy files, else do some work
-    data_dir = config_data[DATA_DIR]
+    data_obj = get_data_from_config(config_table, conditional)
+    if conditional:
+        run_model(mode, data_obj, config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE])
+    else:
+        run_model(mode, data_obj, config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE])
+
+
+def check_dir_exists(config, key):
+    return config[key] if key in config else ''
+
+
+def get_data_from_config(config_file: tomlkit.TOMLDocument, with_labels) -> Data:
+    """ Parse through data section of config file and return Data object."""
+    logging.info("Parsing data section of config file")
+    config_data = config_file[CONFIG_DATA]
+    data_dir = check_dir_exists(config_data, DATA_DIR)
     data = np.load(os.path.join(data_dir, config_data[DATA_PATH]))
     time = np.load(os.path.join(data_dir, config_data[TIME_PATH]))
-    if conditional:
+    if with_labels:
         labels = np.load(os.path.join(data_dir, config_data[LABEL_PATH]))
-        run_model(
-            mode, time, data, DATA_LENGTH, config_data[DTYPE],
-            config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE],
-            labels)
     else:
-        run_model(
-            mode, time, data, DATA_LENGTH, config_data[DTYPE],
-            config_hp[LATENT_DIM], config_hp[EPOCHS], config_hp[BATCH_SIZE])
+        labels = None
+    data = Data(time, data, DATA_LENGTH, config_data[DTYPE], labels)
+    logging.info('Data object created, returning.')
+    return data
+
 
 
 def get_hyperparameters(config_file):
@@ -655,11 +665,9 @@ def main():
     full_data, labels = np.array(data_dict['data']), np.array(data_dict['labels'])
     data_size = full_data.shape[1]
     normalized, scalars = data_dict['normalized'], data_dict['scalars']
+    data = Data(full_time, normalized, DATA_LENGTH, data_type, (labels if conditional else None))
     # Running chosen model
-    run_model(
-        mode, full_time, normalized, data_size, data_type,
-        latent_dimension, epochs, batch_size,
-        labels=(labels if conditional else None))
+    run_model(mode, data, latent_dimension, epochs, batch_size)
 
 
 if __name__ == '__main__':
