@@ -585,8 +585,9 @@ class Data:
         self.data = data
         self.data_size = size
         self.data_type = dtype
-        if labels is not None:
-            self.labels = labels
+        self.labels = labels
+        # if labels is not None:
+        #     self.labels = labels
 
 
 class Hyperparameters:
