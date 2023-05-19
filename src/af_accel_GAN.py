@@ -2,6 +2,9 @@ import argparse
 import os
 import numpy as np
 import scipy
+import tomlkit
+
+import numpy as np
 import tensorflow as tf
 
 from matplotlib import pyplot as plt
@@ -12,26 +15,28 @@ from sklearn.utils import shuffle
 from tensorflow import keras
 from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 from typing import List
-from scipy.stats import wasserstein_distance
 
 from AF_gan import plot_data
-from utils.tensorflow_utils import data_to_dataset
-from AF_gan import (normalize_data, denormalize_data, metric_fft_score,
-                    get_fft_score, get_cross_correlate_score, plot_correlations, plot_recurrence_diff)
-from constants.af_accel_constants import STANDARD_MODE, EBGAN_MODE, VAE_MODE, H_PARAMS, CONFIG_DATA, DTYPE, LATENT_DIM, \
-    EPOCHS, DATA_DIR, DATA_PATH, TIME_PATH, LABEL_PATH, DATA_LENGTH, BATCH_SIZE
-from scoring import tf_avg_wasserstein, average_wasserstein
-from keras_data import get_date_string
-from sine_gan import generate_sine
-from custom_functions.custom_losses import ebgan_loss_fn
+from AF_gan import (
+    normalize_data, denormalize_data, metric_fft_score, get_fft_score,
+    get_cross_correlate_score, plot_correlations, plot_recurrence_diff)
+from constants.af_accel_constants import (
+    STANDARD_MODE, EBGAN_MODE, VAE_MODE, H_PARAMS, CONFIG_DATA, DTYPE,
+    LATENT_DIM, EPOCHS, DATA_DIR, DATA_PATH, TIME_PATH, LABEL_PATH,
+    DATA_LENGTH, BATCH_SIZE)
 from custom_functions.custom_callbacks import PrintLogsCallback, FFTCallback
 from custom_functions.custom_classes import WGAN, CWGAN, EBGAN, Hyperparameters, Data, CEBGAN
+from keras_data import get_date_string
+from scoring import tf_avg_wasserstein, average_wasserstein
+
 from model_architectures.af_accel_GAN_architecture import (
     make_af_accel_discriminator, make_af_accel_generator,
     make_conditional_af_accel_discriminator,
     make_conditional_af_accel_generator, make_af_accel_fcc_generator,
     make_fcc_autoencoder, make_cnn_autoencoder,
-    make_fcc_variationalautoencoder, make_conditional_fcc_autoencoder, make_conditional_fcc_variationalautoencoder)
+    make_fcc_variationalautoencoder, make_conditional_fcc_autoencoder,
+    make_conditional_fcc_variationalautoencoder)
+from utils.tensorflow_utils import data_to_dataset
 from utils.toml_utils import load_toml
 
 
