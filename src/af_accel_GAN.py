@@ -287,8 +287,7 @@ def standard_conditional(
 def standard_conditional_data_prep(mlb: MultiLabelBinarizer, labels, data, data_type=None, repeats=1):
     """ Data preparation for standard_conditional()"""
     new_labels = mlb.fit_transform(labels)
-    print(f'Classes: {mlb.classes_}')
-    print(f'labels shape: {labels.shape}, new labels shape: {new_labels.shape}')
+    logging.info(f'labels shape: {labels.shape}, new labels shape: {new_labels.shape}')
     # Reused variables
     # repeat = repeats
     repeat = int(4e3)  # int(10e3)
