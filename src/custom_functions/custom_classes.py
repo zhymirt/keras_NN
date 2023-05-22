@@ -457,7 +457,7 @@ class VAE(keras.Model):
 
     @staticmethod
     def reparameterize(mean, logvar):
-        eps = tf.random.normal(shape=mean.shape, dtype=mean.dtype)
+        eps = tf.random.normal(shape=tf.shape(mean), dtype=mean.dtype)
         return eps * tf.exp(logvar * .5) + mean
 
     def decode(self, z, apply_sigmoid=False):
@@ -523,14 +523,9 @@ class CVAE(VAE):
         # print(x)
         data, labels = inputs
         mean, logvar = self.encode((data, labels))
-        z = self.reparameterize(mean, logvar, mean.shape[0])
+        z = self.reparameterize(mean, logvar)
         x_logit = self.decode((z, labels)) if training else self.sample(labels, z)
         return x_logit
-
-    @staticmethod
-    def reparameterize(mean, logvar, batch_size):
-        eps = tf.random.normal(shape=(batch_size, mean.shape[1]), dtype=mean.dtype)
-        return eps * tf.exp(logvar * .5) + mean
 
     def compile(self, optimizer, metrics=None):
         super(VAE, self).compile(optimizer, metrics=metrics)
@@ -553,7 +548,7 @@ class CVAE(VAE):
 
     def compute_loss(self, x, labels):
         mean, logvar = self.encode((x, labels))
-        z = self.reparameterize(mean, logvar, mean.shape[0])
+        z = self.reparameterize(mean, logvar)
         x_logit = self.decode((z, labels))
         cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=x_logit, labels=x)
