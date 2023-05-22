@@ -3,13 +3,14 @@ import tensorflow as tf
 
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.python.keras.losses import cosine_similarity
+from tensorflow.keras.losses import cosine_similarity
 
 from custom_functions.custom_losses import wasserstein_loss_fn, wasserstein_metric_fn, critic_diversity_metric
 
 
 class GAN(keras.Model):
     """ Class for generative adversarial network."""
+
     def __init__(self, discriminator, generator, latent_dim):
         super(GAN, self).__init__()
         self.discriminator = discriminator
@@ -95,6 +96,7 @@ class GAN(keras.Model):
 
 class WGAN(GAN):
     """ Class for Wasserstein generative adversarial network."""
+
     def compile(
             self, d_optimizer, g_optimizer, d_loss_fn=wasserstein_loss_fn,
             g_loss_fn=wasserstein_loss_fn, **kwargs):
@@ -180,6 +182,7 @@ class WGAN(GAN):
 
 class CWGAN(WGAN):
     """ Class for conditional WGAN."""
+
     def train_step(self, data):
         """ Training step iteration for model."""
         # Prepare Data
@@ -265,6 +268,7 @@ class CWGAN(WGAN):
 
 class Autoencoder(keras.Model):
     """ Autoencoder class."""
+
     def __init__(self, encoder, decoder, latent_dimension):
         super(Autoencoder, self).__init__()
         self.encoder, self.decoder, self.latent_dimension = encoder, decoder, latent_dimension
@@ -332,15 +336,23 @@ class EBGAN(GAN):
             pred = self.discriminator.encoder(data)
         grads = gp_tape.gradient(pred, [data])[0]
         # batch_size = tf.cast(tf.shape(data)[0], data.dtype)
-        length, sum_loss = grads.shape[0], 0.0
-        sum_loss = tf.reduce_sum(tf.square(cosine_similarity(grads, grads)))
-        # for a in range(length):
-        #     for b in range(length):
-        #         if a != b:
-        #             sim = tf.square(cosine_similarity(grads[a], grads[b]))
-        #             sum_loss += sim
+        length = grads.shape[0]
+        sum_loss = self.get_pt_2(grads, length)
         reg_loss = sum_loss / (length * (length - 1))
         return reg_loss
+
+    @staticmethod
+    @tf.function
+    def get_pt_2(grads, length):
+        ta = tf.TensorArray(grads.dtype, size=length ** 2, dynamic_size=False, clear_after_read=True)
+        sum_loss = 0.0
+        for a in range(length):
+            for b in range(length):
+                if a != b:
+                    sim = tf.square(cosine_similarity(grads[a], grads[b]))
+                    sum_loss += sim
+                    ta.write(a * length + b, sim)
+        return tf.reduce_sum(ta.stack())
 
 
 class CEBGAN(EBGAN):
@@ -389,23 +401,29 @@ class CEBGAN(EBGAN):
             gp_tape.watch(data)
             pred = self.discriminator.encoder((data, class_labels))
         grads = gp_tape.gradient(pred, [data])[0]
-        length, sum_loss = grads.shape[0], 0.0
-        sum_loss = self.get_pt(grads)
-        # sum_loss = tf.reduce_sum(tf.square(cosine_similarity(grads, grads)))
+        length = grads.shape[0]
+        sum_loss = self.get_pt_2(grads, length)
         reg_loss = sum_loss / (length * (length - 1))
         return reg_loss
 
-    @staticmethod
-    def get_pt(self, grads):
-        cs = []
-        for idx, grad in enumerate(grads):
-            out = np.sum(np.square([cosine_similarity(grad, item) for jdx, item in enumerate(grads) if idx != jdx]))
-            cs.append(out)
-        return np.sum(cs)
+    # Defined in EBGAN, this does not need to be rewritten
+    # @staticmethod
+    # @tf.function
+    # def get_pt_2(grads, length):
+    #     ta = tf.TensorArray(grads.dtype, size=length ** 2, dynamic_size=False, clear_after_read=True)
+    #     sum_loss = 0.0
+    #     for a in range(length):
+    #         for b in range(length):
+    #             if a != b:
+    #                 sim = tf.square(cosine_similarity(grads[a], grads[b]))
+    #                 sum_loss += sim
+    #                 ta.write(a * length + b, sim)
+    #     return tf.reduce_sum(ta.stack())
 
 
 class VAE(keras.Model):
     """Convolutional variational autoencoder."""
+
     def __init__(self, encoder, decoder, latent_dimension):
         super(VAE, self).__init__()
         self.latent_dimension = latent_dimension
@@ -453,8 +471,8 @@ class VAE(keras.Model):
     def log_normal_pdf(sample, mean, logvar, raxis=1):
         log2pi = tf.math.log(2. * np.pi)
         return tf.reduce_sum(
-          -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar
-                 + log2pi), axis=raxis)
+            -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar
+                   + log2pi), axis=raxis)
 
     def compute_loss(self, x):
         mean, logvar = self.encode(x)
@@ -490,6 +508,7 @@ class VAE(keras.Model):
 
 class CVAE(VAE):
     """Convolutional variational autoencoder."""
+
     # def predict(self, x):
     #     return self.call(x)
 
@@ -504,9 +523,14 @@ class CVAE(VAE):
         # print(x)
         data, labels = inputs
         mean, logvar = self.encode((data, labels))
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, mean.shape[0])
         x_logit = self.decode((z, labels)) if training else self.sample(labels, z)
         return x_logit
+
+    @staticmethod
+    def reparameterize(mean, logvar, batch_size):
+        eps = tf.random.normal(shape=(batch_size, mean.shape[1]), dtype=mean.dtype)
+        return eps * tf.exp(logvar * .5) + mean
 
     def compile(self, optimizer, metrics=None):
         super(VAE, self).compile(optimizer, metrics=metrics)
@@ -529,7 +553,7 @@ class CVAE(VAE):
 
     def compute_loss(self, x, labels):
         mean, logvar = self.encode((x, labels))
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, mean.shape[0])
         x_logit = self.decode((z, labels))
         cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=x_logit, labels=x)
@@ -558,11 +582,6 @@ class CVAE(VAE):
             zip(gradients, self.trainable_variables))
         metrics.update({'loss': loss})
         return metrics
-
-
-
-
-
 
 
 # Written by fchollet 2020
