@@ -26,6 +26,7 @@ def data_interpolate(data: Data, hp: Hyperparameters, repeat_amounts: List, fold
         gen_name = f'generator-{repeat}-repeats'
         critic_name = f'critic-{repeat}-repeats'
         save_gan(model.generator, model.discriminator, results_dir, gen_name, critic_name)
+        del model
 
 
 def batch_interpolate(data: Data, hp: Hyperparameters, batch_amounts: List, folder=None):
@@ -38,6 +39,7 @@ def batch_interpolate(data: Data, hp: Hyperparameters, batch_amounts: List, fold
         gen_name = f'generator-{batch}-batch_size'
         critic_name = f'critic-{batch}-batch_size'
         save_gan(model.generator, model.discriminator, results_dir, gen_name, critic_name)
+        del model
 
 
 def check_dir_exists(config, key):
